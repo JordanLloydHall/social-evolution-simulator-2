@@ -3,6 +3,8 @@ package entity;
 import java.awt.Point;
 import java.util.Properties;
 
+import interpreter.Interpreter;
+
 public abstract class Entity {
 	protected Point pos;
 	protected int durability;
@@ -23,7 +25,7 @@ public abstract class Entity {
 		
 	public Point getPoint() { return pos; }
 	
-	public double[] getPos() { return new double[] {pos.x, pos.y}; }
+	public int[] getPos() { return new int[] {pos.x, pos.y}; }
 
 	public void setPos(int x, int y) {
 
@@ -45,5 +47,13 @@ public abstract class Entity {
 	}
 
 	public boolean isDestroyed() { return destroyed; }
+	
+	public void addDurability(int inc) { durability += inc; };
+	
+	public abstract void onAction(Interpreter interpreter, Actor actor);
+	public abstract void onStep(Interpreter interpreter);
+	public abstract Entity getNewChild(int x, int y);
+	public abstract Entity getNewConvert();
+
 	
 }
