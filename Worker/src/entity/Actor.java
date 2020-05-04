@@ -110,7 +110,7 @@ public class Actor extends Entity {
 		} else {
 			currentDirection = (int)(Math.random()*4);
 			moveForward(interpreter);
-			if (viewRadius < 30) viewRadius += 2;
+			if (viewRadius < 5) viewRadius += 2;
 		}
 		
 		if (viewRadius > 5) {

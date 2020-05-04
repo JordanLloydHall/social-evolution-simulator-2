@@ -172,7 +172,7 @@ public class Gui {
 							if (newEntity instanceof Actor) {
 								Entity[] withinRange = ((Actor)(newEntity)).getRayCasts(env);
 								//Arrays.sort(withinRange, (a,b));
-								for(int ray=0; ray<15;ray++) {
+								for(int ray=0; ray<6;ray++) {
 									
 									Graphics2D g2 = (Graphics2D) g;
 									g2.setStroke(new BasicStroke(2));
