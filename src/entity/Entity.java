@@ -3,6 +3,7 @@ package entity;
 import java.awt.Point;
 import java.util.Properties;
 
+import environment.Environment;
 import interpreter.Interpreter;
 
 public abstract class Entity {
@@ -25,6 +26,14 @@ public abstract class Entity {
 		
 	public Point getPoint() { return pos; }
 	
+	public static double[] copyFromIntArray(int[] source) {
+	    double[] dest = new double[source.length];
+	    for(int i=0; i<source.length; i++) {
+	        dest[i] = source[i];
+	    }
+	    return dest;
+	}
+	
 	public int[] getPos() { return new int[] {pos.x, pos.y}; }
 
 	public void setPos(int x, int y) {
@@ -46,12 +55,17 @@ public abstract class Entity {
 		}
 	}
 
-	public boolean isDestroyed() { return destroyed; }
+	public boolean isDestroyed() {
+		if (durability == 0) {
+			destroyed = true;
+		}
+		return destroyed;
+	}
 	
 	public void addDurability(int inc) { durability += inc; };
 	
 	public abstract void onAction(Interpreter interpreter, Actor actor);
-	public abstract void onStep(Interpreter interpreter);
+	public abstract void onStep(Interpreter interpreter, Environment env);
 	public abstract Entity getNewChild(int x, int y);
 	public abstract Entity getNewConvert();
 

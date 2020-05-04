@@ -2,6 +2,7 @@ package worker;
 
 import java.awt.EventQueue;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 
 import javax.swing.JFrame;
 import javax.swing.JMenuBar;
@@ -16,6 +17,8 @@ import interpreter.Interpreter;
 
 import javax.imageio.ImageIO;
 import javax.swing.JButton;
+
+import java.awt.BasicStroke;
 import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -24,6 +27,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Properties;
 import java.awt.event.ActionEvent;
 import javax.swing.JScrollPane;
@@ -90,8 +94,9 @@ public class Gui {
 		timer = new Timer(1000, new ActionListener() {
             public void actionPerformed(ActionEvent evt) {
             	if (btnStep.isSelected()) {
+            		paintAgain();
 	            	environment.step();
-	    			paintAgain();
+	    			
             	}
             	timer.setDelay(1000/(int)fpsSlider.getValue());
             	scaler = (int)scaleSlider.getValue();
@@ -133,12 +138,13 @@ public class Gui {
 				
 				double xMultiplier = this.getWidth()/(double)environment.getWorldWidth();
 				double yMultiplier = this.getHeight()/(double)environment.getWorldHeight();
-
-				
+				g.setColor(Color.green);
+				g.fillRect(0, 0, this.getWidth(), this.getHeight());
 				for (int x=0; x<environment.getWorldWidth(); x++) {
 					for (int y=0; y<environment.getWorldHeight(); y++) {
 						Entity newEntity = environment.getEntity(x, y);
-						g.setColor(Color.green);
+						
+						
 						int startingY = this.getHeight()-(int)Math.round(y*yMultiplier) - (int)Math.round(yMultiplier);
 						int startingX = (int)Math.round(x*xMultiplier);
 						if (newEntity != null) {
@@ -146,12 +152,43 @@ public class Gui {
 								g.drawImage(wheatImg, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
 							} else if (newEntity instanceof Actor) {
 								g.drawImage(actorImg, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
+								
 							} else if (newEntity instanceof WheatGrain) {
 								g.drawImage(wheatGrainImg, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
 							}
-							
-						} else {
-							g.fillRect(startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier));
+						}
+						
+					}
+				}
+				
+				for (int x=0; x<environment.getWorldWidth(); x++) {
+					for (int y=0; y<environment.getWorldHeight(); y++) {
+						Entity newEntity = environment.getEntity(x, y);
+						
+						
+						int startingY = this.getHeight()-(int)Math.round(y*yMultiplier) - (int)Math.round(yMultiplier);
+						int startingX = (int)Math.round(x*xMultiplier);
+						if (newEntity != null) {
+							if (newEntity instanceof Actor) {
+								Entity[] withinRange = ((Actor)(newEntity)).getRayCasts(env);
+								//Arrays.sort(withinRange, (a,b));
+								for(int ray=0; ray<15;ray++) {
+									
+									Graphics2D g2 = (Graphics2D) g;
+									g2.setStroke(new BasicStroke(2));
+									if (withinRange[ray] != null) {
+										int[] pClosest = withinRange[ray].getPos();
+										
+
+										int startx = (startingX+(int)Math.round(xMultiplier/2));
+										int starty = (startingY+(int)Math.round(yMultiplier/2));
+										int endx = (int)(pClosest[0]*xMultiplier) + (int)Math.round(yMultiplier/2);
+										int endy = this.getHeight()-(int)Math.round(pClosest[1]*yMultiplier) - (int)Math.round(yMultiplier*0.5);
+										g.setColor(Color.red);
+										g.drawLine(startx, starty,  endx, endy);
+									}
+								}
+							}
 						}
 						
 					}
@@ -169,6 +206,7 @@ public class Gui {
 		frmSocialEvolutionSimulator.getContentPane().add(fpsSlider);
 		
 		scaleSlider = new JSlider();
+		scaleSlider.setValue(5);
 		scaleSlider.setMaximum(50);
 		scaleSlider.setMinimum(5);
 		scaleSlider.setBounds(486, 12, 200, 16);

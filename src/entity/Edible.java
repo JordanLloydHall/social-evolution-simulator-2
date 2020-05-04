@@ -3,6 +3,7 @@ package entity;
 import java.awt.Point;
 import java.util.Properties;
 
+import environment.Environment;
 import interpreter.Interpreter;
 
 public abstract class Edible extends Resource {
@@ -12,18 +13,17 @@ public abstract class Edible extends Resource {
 	
 	public Edible(Properties properties, Point newPos) {
 		super(properties, newPos);
-		durability = 0;
+		durability = 1;
 		chanceOfDuplication = 0;
 	}
 	
 	@Override
 	public void onAction(Interpreter interpreter, Actor actor) {
+		damageEntity(actor.getToolLevel());
 		actor.addDurability(nourishment);
 		interpreter.addToConvertQueue(getPos());
 	}
 	
-	@Override
-	public void onStep(Interpreter interpreter) {}
 
 	@Override
 	public Entity getNewChild(int x, int y) {

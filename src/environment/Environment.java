@@ -1,9 +1,13 @@
 package environment;
 
+import java.awt.Point;
+import java.util.Arrays;
 import java.util.Properties;
 
+import entity.Actor;
 import entity.Entity;
 import entity.EntityFactory;
+import entity.Wheat;
 import interpreter.Interpreter;
 import net.sf.javaml.core.kdtree.KDTree;
 
@@ -34,8 +38,27 @@ public class Environment {
 					insertEntity(newEntity, x, y);
 				}
 			}
-		}	
+		}
 		
+//		resetWorld();
+//		Wheat newWheat = new Wheat(properties, new Point(1,0));
+//		Actor newactor = new Actor(properties, new Point(1,1));
+//		insertEntity(newWheat, 1, 8);
+//		insertEntity(newactor, 1, 1);
+		
+	}
+	
+	public void generateKDTree() {
+		worldKDTree = new KDTree(2);
+		
+		for (int x=0; x<worldWidth; x++) {
+			for (int y=0; y<worldHeight; y++) {
+				
+				if (worldGrid[x][y] != null) {
+					worldKDTree.insert(new double[] {x, y}, worldGrid[x][y]);
+				}
+			}
+		}
 	}
 
 	public int getWorldWidth() { return worldWidth; }
@@ -79,20 +102,35 @@ public class Environment {
 	}
 
 	public void step() {
+		
 		for (int x=0; x<worldWidth; x++) {
 			for (int y=0; y<worldHeight; y++) {
 				Entity newEntity = getEntity(x,y);
 				if (newEntity != null) {
-					newEntity.onStep(interpreter);
+					newEntity.onStep(interpreter, this);
 				}
 			}
 		}
 		
 		interpreter.interpretStep(this);
+		generateKDTree();
 	}
 	
 	public boolean isValidPosition(int x, int y) {
 		return (x >= 0 && y >= 0 && x < getWorldWidth() && y < getWorldHeight());
 	}
 	
+	public Entity[] getEntitiesWithinRange(double[] pos, double viewRadius) {
+		
+		
+		Object[] objectArray = worldKDTree.range(new double[] {pos[0]-viewRadius, pos[1]-viewRadius}, new double[] {pos[0]+viewRadius, pos[1]+viewRadius});
+		Entity[] entityArray = new Entity[objectArray.length];
+		
+//		System.out.println(Arrays.toString(objectArray));
+		for (int i=0; i<entityArray.length; i++) {
+			entityArray[i] = (Entity)objectArray[i];
+		}
+		
+		return entityArray;
+	}
 }

@@ -3,6 +3,7 @@ package entity;
 import java.awt.Point;
 import java.util.Properties;
 
+import environment.Environment;
 import interpreter.Interpreter;
 
 public abstract class Resource extends Entity {
@@ -16,7 +17,7 @@ public abstract class Resource extends Entity {
 		//damageEntity(actor.);
 		// TODO add damage based on actor tool level.
 				
-		damageEntity(1);
+		damageEntity(actor.getToolLevel());
 		
 		if (isDestroyed()) {
 			interpreter.addToConvertQueue(getPos());
@@ -25,9 +26,13 @@ public abstract class Resource extends Entity {
 	}
 	
 	@Override
-	public void onStep(Interpreter interpreter) {
+	public void onStep(Interpreter interpreter, Environment env) {
 		if (Math.random() < chanceOfDuplication) {
 			interpreter.addToSpawnQueue(new int[] {pos.x, pos.y});
+		}
+		
+		if (Math.random() < 0.005) {
+			interpreter.addToConvertQueue(new int[] {pos.x, pos.y});
 		}
 	}
 }

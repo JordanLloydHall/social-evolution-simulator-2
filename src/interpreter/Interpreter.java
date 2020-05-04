@@ -85,7 +85,7 @@ public class Interpreter {
 			Entity targetEntity = env.getEntity(entityPos[0], entityPos[1]);
 			Actor actor = (Actor)env.getEntity(actorPos[0], actorPos[1]);
 			
-			if (targetEntity != null) {	
+			if (targetEntity != null && !targetEntity.isDestroyed()) {	
 				targetEntity.onAction(this, actor);
 			}
 		}
@@ -94,8 +94,9 @@ public class Interpreter {
 			entityPos = convertQueue.remove();
 			
 			Entity targetEntity = env.getEntity(entityPos[0], entityPos[1]);
-
-			env.insertEntity(targetEntity.getNewConvert(), entityPos[0], entityPos[1]);;
+			if (targetEntity != null) {
+				env.insertEntity(targetEntity.getNewConvert(), entityPos[0], entityPos[1]);
+			}
 		}
 		
 		while (!placeQueue.isEmpty()) {
@@ -142,6 +143,7 @@ public class Interpreter {
 				env.insertEntity(actor, newActorPos[0], newActorPos[1]);
 			}
 		}
+	
 		
 	}
 	
