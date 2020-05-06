@@ -66,6 +66,7 @@ public class Gui {
 	private final BufferedImage wheatImg;
 	private final BufferedImage actorImg;
 	private final BufferedImage wheatGrainImg;
+	private final BufferedImage grassImg;
 	
 	private JPanel canvas;
 	private Timer timer;
@@ -84,8 +85,10 @@ public class Gui {
 		environment = new Environment(properties, interpreter);
 		
 		wheatImg = ImageIO.read(new File("./sprites/wheat.png"));
-		actorImg = ImageIO.read(new File("./sprites/actor.png"));
+		actorImg = ImageIO.read(new File("./sprites/actor_down.png"));
 		wheatGrainImg = ImageIO.read(new File("./sprites/wheat_grain.png"));
+		grassImg = ImageIO.read(new File("./sprites/grass.png"));
+		
 		
 		scaler = 20;
 		
@@ -138,8 +141,8 @@ public class Gui {
 				
 				double xMultiplier = this.getWidth()/(double)environment.getWorldWidth();
 				double yMultiplier = this.getHeight()/(double)environment.getWorldHeight();
-				g.setColor(Color.green);
-				g.fillRect(0, 0, this.getWidth(), this.getHeight());
+//				g.setColor(Color.green);
+//				g.fillRect(0, 0, this.getWidth(), this.getHeight());
 				for (int x=0; x<environment.getWorldWidth(); x++) {
 					for (int y=0; y<environment.getWorldHeight(); y++) {
 						Entity newEntity = environment.getEntity(x, y);
@@ -147,6 +150,7 @@ public class Gui {
 						
 						int startingY = this.getHeight()-(int)Math.round(y*yMultiplier) - (int)Math.round(yMultiplier);
 						int startingX = (int)Math.round(x*xMultiplier);
+						g.drawImage(grassImg, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
 						if (newEntity != null) {
 							if (newEntity instanceof Wheat) {
 								g.drawImage(wheatImg, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
