@@ -4,11 +4,11 @@ import java.awt.Point;
 import java.util.Properties;
 import java.util.Random;
 
-public class WheatGrain extends Edible {
+public class Meat extends Edible {
 
-	private String resourceName = "WHEAT_GRAIN";
+	private String resourceName = "MEAT";
 	
-	public WheatGrain(Properties properties, Point newPos, Random r) {
+	public Meat(Properties properties, Point newPos, Random r) {
 		super(properties, newPos, r);
 		portability = Boolean.parseBoolean(properties.getProperty(resourceName + "_PORTABLE"));
 		chanceOfGeneration = Float.parseFloat(properties.getProperty(resourceName + "_GENERATION"));

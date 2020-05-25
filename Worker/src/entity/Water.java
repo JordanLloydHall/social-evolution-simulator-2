@@ -7,24 +7,21 @@ import java.util.Random;
 import environment.Environment;
 import interpreter.Interpreter;
 
-public abstract class Edible extends Resource {
-
-	protected int nourishment;
+public class Water extends Entity {
 	
-	
-	public Edible(Properties properties, Point newPos, Random r) {
+	public Water(Properties properties, Point newPos, Random r) {
 		super(properties, newPos, r);
-		durability = 1;
-		chanceOfDuplication = 0;
 	}
-	
+
 	@Override
 	public void onAction(Interpreter interpreter, Actor actor) {
-		damageEntity(actor.getToolLevel());
-		actor.addDurability(nourishment);
-		interpreter.addToConvertQueue(getPos());
+		return;
 	}
-	
+
+	@Override
+	public void onStep(Interpreter interpreter, Environment env) {
+		return;
+	}
 
 	@Override
 	public Entity getNewChild(int x, int y) {

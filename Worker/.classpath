@@ -8,5 +8,6 @@
 	</classpathentry>
 	<classpathentry kind="lib" path="javaml-0.1.7"/>
 	<classpathentry kind="lib" path="javaml-0.1.7/javaml-0.1.7.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/5"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

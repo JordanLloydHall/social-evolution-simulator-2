@@ -5,33 +5,33 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 
 import javax.swing.JFrame;
-import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
 
 import entity.Actor;
 import entity.Entity;
+import entity.Meat;
+import entity.Tree;
+import entity.Water;
 import entity.Wheat;
 import entity.WheatGrain;
+import entity.Wood;
+import entity.WoodTool;
 import environment.Environment;
 import interpreter.Interpreter;
 
 import javax.imageio.ImageIO;
-import javax.swing.JButton;
 
 import java.awt.BasicStroke;
-import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Comparator;
+import java.util.Date;
 import java.util.Properties;
+import java.util.Random;
 import java.awt.event.ActionEvent;
 import javax.swing.JScrollPane;
-import javax.swing.JViewport;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.Timer;
 import javax.swing.JPanel;
@@ -64,46 +64,72 @@ public class Gui {
 	private Environment environment;
 	
 	private final BufferedImage wheatImg;
-	private final BufferedImage actorImg;
+	private final BufferedImage actorImgRight;
+	private final BufferedImage actorImgUp;
+	private final BufferedImage actorImgLeft;
+	private final BufferedImage actorImgDown;
 	private final BufferedImage wheatGrainImg;
 	private final BufferedImage grassImg;
+	private final BufferedImage waterImg;
+	private final BufferedImage meatImg;
+	private final BufferedImage treeImg;
+	private final BufferedImage woodImg;
+	private final BufferedImage woodToolImg;
 	
 	private JPanel canvas;
 	private Timer timer;
 	private JToggleButton btnStep;
+	private JToggleButton btnShowWorld;
 	private JSlider fpsSlider;
 	private JSlider scaleSlider;
 	private int scaler;
+	private JToggleButton btnShowVisibleMask;
+	private JToggleButton btnShowRays;
 
-	/**
-	 * Create the application.
-	 * @throws IOException 
-	 */
 	public Gui() throws IOException {
 		properties = PropertyFileReader.getProperties();
 		interpreter = new Interpreter(properties);
-		environment = new Environment(properties, interpreter);
+		environment = new Environment(properties, interpreter, new Random());
 		
 		wheatImg = ImageIO.read(new File("./sprites/wheat.png"));
-		actorImg = ImageIO.read(new File("./sprites/actor_down.png"));
+		actorImgRight = ImageIO.read(new File("./sprites/actor_right.png"));
+		actorImgUp = ImageIO.read(new File("./sprites/actor_up.png"));
+		actorImgLeft = ImageIO.read(new File("./sprites/actor_left.png"));
+		actorImgDown = ImageIO.read(new File("./sprites/actor_down.png"));
 		wheatGrainImg = ImageIO.read(new File("./sprites/wheat_grain.png"));
 		grassImg = ImageIO.read(new File("./sprites/grass.png"));
+		waterImg = ImageIO.read(new File("./sprites/water.png"));
+		meatImg = ImageIO.read(new File("./sprites/meat.png"));
+		treeImg = ImageIO.read(new File("./sprites/tree.png"));
+		woodImg = ImageIO.read(new File("./sprites/wood.png"));
+		woodToolImg = ImageIO.read(new File("./sprites/wood_tool.png"));
 		
 		
-		scaler = 20;
+		scaler = 2;
 		
 		initialize(environment);
 		
+		
+		
 		timer = new Timer(1000, new ActionListener() {
+			private int timeSteps = 0;
             public void actionPerformed(ActionEvent evt) {
-            	if (btnStep.isSelected()) {
-            		paintAgain();
-	            	environment.step();
-	    			
-            	}
+            	
+            	long time = new Date().getTime();
+            	
             	timer.setDelay(1000/(int)fpsSlider.getValue());
             	scaler = (int)scaleSlider.getValue();
-            	canvas.revalidate();
+            	
+            	if (btnStep.isSelected()) {
+            		if (btnShowWorld.isSelected()) {
+            			canvas.revalidate();
+            			paintAgain();
+            		}
+	            	environment.step(timeSteps);
+	            	System.out.println("Timestep " + timeSteps + " completed. Time taken: " + Math.round((new Date().getTime() - time)*100f/1000f)/100f);
+	            	timeSteps += 1;
+            	}
+            	
             	
             }
         });
@@ -139,8 +165,8 @@ public class Gui {
 			public void paintComponent(Graphics g) {
 				
 				
-				double xMultiplier = this.getWidth()/(double)environment.getWorldWidth();
-				double yMultiplier = this.getHeight()/(double)environment.getWorldHeight();
+				float xMultiplier = this.getWidth()/(float)environment.getWorldWidth();
+				float yMultiplier = this.getHeight()/(float)environment.getWorldHeight();
 //				g.setColor(Color.green);
 //				g.fillRect(0, 0, this.getWidth(), this.getHeight());
 				for (int x=0; x<environment.getWorldWidth(); x++) {
@@ -150,51 +176,83 @@ public class Gui {
 						
 						int startingY = this.getHeight()-(int)Math.round(y*yMultiplier) - (int)Math.round(yMultiplier);
 						int startingX = (int)Math.round(x*xMultiplier);
-						g.drawImage(grassImg, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
+						
 						if (newEntity != null) {
-							if (newEntity instanceof Wheat) {
-								g.drawImage(wheatImg, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
-							} else if (newEntity instanceof Actor) {
-								g.drawImage(actorImg, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
+							if (!newEntity.isVisable() && btnShowVisibleMask.isSelected()) {
+								g.setColor(Color.red);
+								g.fillRect(startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier));
 								
-							} else if (newEntity instanceof WheatGrain) {
-								g.drawImage(wheatGrainImg, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
+							} else {
+								g.drawImage(grassImg, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
+								if (newEntity instanceof Wheat) {
+									g.drawImage(wheatImg, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
+								} else if (newEntity instanceof Actor) {
+									if (((Actor) newEntity).getDirection() == 0) {
+										g.drawImage(actorImgRight, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
+									} else if (((Actor) newEntity).getDirection() == 1) {
+										g.drawImage(actorImgUp, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
+									} else if (((Actor) newEntity).getDirection() == 2) {
+										g.drawImage(actorImgLeft, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
+									} else if (((Actor) newEntity).getDirection() == 3) {
+										g.drawImage(actorImgDown, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
+									} else {
+										System.out.println(((Actor) newEntity).getDirection());
+									}
+									
+								} else if (newEntity instanceof WheatGrain) {
+									g.drawImage(wheatGrainImg, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
+								} else if (newEntity instanceof Water) {
+									g.drawImage(waterImg, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
+								} else if (newEntity instanceof Meat) {
+									g.drawImage(meatImg, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
+								} else if (newEntity instanceof Tree) {
+									g.drawImage(treeImg, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
+								} else if (newEntity instanceof Wood) {
+									g.drawImage(woodImg, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
+								} else if (newEntity instanceof WoodTool) {
+									g.drawImage(woodToolImg, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
+								} else {
+									System.out.println(newEntity);
+								}
 							}
+						} else {
+							g.drawImage(grassImg, startingX, startingY, (int)Math.round(xMultiplier), (int)Math.round(yMultiplier), this);
 						}
 						
 					}
 				}
-				
-				for (int x=0; x<environment.getWorldWidth(); x++) {
-					for (int y=0; y<environment.getWorldHeight(); y++) {
-						Entity newEntity = environment.getEntity(x, y);
-						
-						
-						int startingY = this.getHeight()-(int)Math.round(y*yMultiplier) - (int)Math.round(yMultiplier);
-						int startingX = (int)Math.round(x*xMultiplier);
-						if (newEntity != null) {
-							if (newEntity instanceof Actor) {
-								Entity[] withinRange = ((Actor)(newEntity)).getRayCasts(env);
-								//Arrays.sort(withinRange, (a,b));
-								for(int ray=0; ray<6;ray++) {
-									
-									Graphics2D g2 = (Graphics2D) g;
-									g2.setStroke(new BasicStroke(2));
-									if (withinRange[ray] != null) {
-										int[] pClosest = withinRange[ray].getPos();
+				if (btnShowRays.isSelected()) {
+					for (int x=0; x<environment.getWorldWidth(); x++) {
+						for (int y=0; y<environment.getWorldHeight(); y++) {
+							Entity newEntity = environment.getEntity(x, y);
+							
+							
+							int startingY = this.getHeight()-(int)Math.round(y*yMultiplier) - (int)Math.round(yMultiplier);
+							int startingX = (int)Math.round(x*xMultiplier);
+							if (newEntity != null) {
+								if (newEntity instanceof Actor) {
+									Entity[] withinRange = ((Actor)(newEntity)).getRayCasts(env);
+									//Arrays.sort(withinRange, (a,b));
+									for(int ray=0; ray<withinRange.length;ray++) {
 										
-
-										int startx = (startingX+(int)Math.round(xMultiplier/2));
-										int starty = (startingY+(int)Math.round(yMultiplier/2));
-										int endx = (int)(pClosest[0]*xMultiplier) + (int)Math.round(yMultiplier/2);
-										int endy = this.getHeight()-(int)Math.round(pClosest[1]*yMultiplier) - (int)Math.round(yMultiplier*0.5);
-										g.setColor(Color.red);
-										g.drawLine(startx, starty,  endx, endy);
+										Graphics2D g2 = (Graphics2D) g;
+										g2.setStroke(new BasicStroke(2));
+										if (withinRange[ray] != null) {
+											int[] pClosest = withinRange[ray].getPos();
+											
+	
+											int startx = (startingX+(int)Math.round(xMultiplier/2));
+											int starty = (startingY+(int)Math.round(yMultiplier/2));
+											int endx = (int)(pClosest[0]*xMultiplier) + (int)Math.round(yMultiplier/2);
+											int endy = this.getHeight()-(int)Math.round(pClosest[1]*yMultiplier) - (int)Math.round(yMultiplier*0.5);
+											g.setColor(Color.red);
+											g.drawLine(startx, starty,  endx, endy);
+										}
 									}
 								}
 							}
+							
 						}
-						
 					}
 				}
 			}
@@ -204,15 +262,16 @@ public class Gui {
 		scrollPane.setViewportView(canvas);
 		
 		fpsSlider = new JSlider();
-		fpsSlider.setMaximum(20);
+		fpsSlider.setMaximum(250);
 		fpsSlider.setMinimum(1);
+		fpsSlider.setValue(250);
 		fpsSlider.setBounds(209, 12, 200, 16);
 		frmSocialEvolutionSimulator.getContentPane().add(fpsSlider);
 		
 		scaleSlider = new JSlider();
-		scaleSlider.setValue(5);
+		scaleSlider.setValue(1);
 		scaleSlider.setMaximum(50);
-		scaleSlider.setMinimum(5);
+		scaleSlider.setMinimum(1);
 		scaleSlider.setBounds(486, 12, 200, 16);
 		frmSocialEvolutionSimulator.getContentPane().add(scaleSlider);
 		
@@ -223,6 +282,18 @@ public class Gui {
 		JLabel lblScale = new JLabel("Scale");
 		lblScale.setBounds(430, 17, 70, 15);
 		frmSocialEvolutionSimulator.getContentPane().add(lblScale);
+		
+		btnShowWorld = new JToggleButton("Show World");
+		btnShowWorld.setBounds(701, 12, 126, 25);
+		frmSocialEvolutionSimulator.getContentPane().add(btnShowWorld);
+		
+		btnShowVisibleMask = new JToggleButton("Show Visible Mask");
+		btnShowVisibleMask.setBounds(839, 12, 170, 25);
+		frmSocialEvolutionSimulator.getContentPane().add(btnShowVisibleMask);
+		
+		btnShowRays = new JToggleButton("Show Rays");
+		btnShowRays.setBounds(1021, 12, 117, 25);
+		frmSocialEvolutionSimulator.getContentPane().add(btnShowRays);
 		scrollPane.getVerticalScrollBar().setUnitIncrement(25);
 		scrollPane.getHorizontalScrollBar().setUnitIncrement(25);
 		
