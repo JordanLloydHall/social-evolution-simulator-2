@@ -173,6 +173,11 @@ public class Environment {
 		int numActors = 0;
 
 		entityStepProcessingQueue.addAll(entityList);
+//		for (Entity e : entityList) {
+//			if (!e.getIsVisible()) {
+//				entityStepProcessingQueue.add(e)
+//			}
+//		}
 		for (Entity newEntity : entityList) {
 			if (newEntity instanceof Actor) {
 				numActors +=1;
@@ -181,19 +186,6 @@ public class Environment {
 		
 		while (!entityStepProcessingQueue.isEmpty()) {
 		}
-		
-		if (time == 20000 || numActors == 0) {
-			for (int i=0; i<4; i++) {
-				try {
-					entityProcessors[i].done = true;
-					entityProcessors[i].join();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-			return true;
-		}
-		
 	
 		interpreter.interpretStep(this, checkSurroundingsProcessingQueue);
 		int x = r.nextInt(this.worldWidth);
@@ -202,6 +194,19 @@ public class Environment {
 			insertEntity(new Wheat(properties, new Point(x,y), r), x, y);
 		}
 		generateKDTree();
+		
+		if (time == 10000 || numActors == 0) {
+			System.out.println(numActors);
+			for (int i=0; i<entityProcessors.length; i++) {
+				entityProcessors[i].done = true;
+				try {
+					entityProcessors[i].join();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			return true;
+		}
 		
 		return false;
 	}

@@ -30,6 +30,8 @@ public class Actor extends Entity {
 	private float viewRadius;
 	private float viewRadiusStepSize;
 	private float fov;
+	private float fovStepSize;
+	
 	private int currentDirection;
 	
 	private int totalNetworkInputs;
@@ -74,10 +76,11 @@ public class Actor extends Entity {
 		super(properties, newPos, r);
 		
 		viewRadius = Float.parseFloat(properties.getProperty("ACTOR_VIEW_RADIUS"));
-		if (viewRadius > 10) {
-			viewRadius = 10;
-		}
 		viewRadiusStepSize = 0.1f;
+		fov = (float) Math.PI;
+		fovStepSize = 0.1f;
+		
+		
 		rayCastCount = Integer.parseInt(properties.getProperty("ACTOR_VIEW_CASTS"));
 		maxAge = Integer.parseInt(properties.getProperty("ACTOR_MAX_AGE"));
 		
@@ -86,12 +89,13 @@ public class Actor extends Entity {
 		//		durability of entity %,
 		//		
 		//		type of entity (6 types),
-		// 		communication output from actor)
+		// 		communication output from actor,
+		//		genetic distance from actor)
 		//			
 		// OUTPUTS : turn left, turn right, action forward, Move forward, pickup/putdown, reproduce, communication outward
 		numberOfDifferentEntities = 8;
 		numberOfDifferentTools = 1;
-		dimensionsPerRaycast = 2 + numberOfDifferentEntities;
+		dimensionsPerRaycast = 3 + numberOfDifferentEntities;
 		dimensionsBeforeRaycast = 2 + numberOfDifferentTools + numberOfDifferentEntities - 2;
 		totalNetworkInputs = dimensionsBeforeRaycast + rayCastCount * dimensionsPerRaycast;
 		totalNetworkOutputs = 7;
@@ -99,8 +103,6 @@ public class Actor extends Entity {
 		
 		durability = Integer.parseInt(properties.getProperty("ACTOR_DURABILITY"));
 		maxDurability = durability;
-		
-		fov = (float) Math.PI;
 		
 		currentDirection = (int)(r.nextFloat()*4);
 		this.counter = counter;
@@ -118,18 +120,20 @@ public class Actor extends Entity {
 				genome.addNode(TYPE.OUTPUT, 1);
 			}
 			
-			for (int i=0; i<totalNetworkOutputs; i++) {
-				for (int j=0; j<totalNetworkInputs; j++) {
-					if ((j < 2 || j>= 2 + numberOfDifferentEntities - 2) && j<numberOfDifferentEntities + dimensionsPerRaycast) {
-						ConnectionGene newConn = new ConnectionGene(j, i+totalNetworkInputs, (float) r.nextGaussian(), 0.1f, true, -1);
-						genome.addNewConnection(newConn);
-					}
-				}
-			}
+//			for (int i=0; i<totalNetworkOutputs; i++) {
+//				if (i != 4) {
+//					for (int j=0; j<totalNetworkInputs; j++) {
+//						if ((j < 2 || j>= 2 + numberOfDifferentEntities - 2) && j<numberOfDifferentEntities + dimensionsPerRaycast) {
+//							ConnectionGene newConn = new ConnectionGene(j, i+totalNetworkInputs, (float) r.nextGaussian(), 0.1f, true, -1);
+//							genome.addNewConnection(newConn);
+//						}
+//					}
+//				}
+//			}
 			
 			for (int i=0; i<totalNetworkOutputs; i++) {
 				for (int j=0; j<totalNetworkInputs; j++) {
-					ConnectionGene newConn = new ConnectionGene(j, i+totalNetworkInputs, 0f, 0.1f, false, -1);
+					ConnectionGene newConn = new ConnectionGene(j, i+totalNetworkInputs, (float) r.nextGaussian(), 0.1f, true, -1);
 					genome.addNewConnection(newConn);
 				}
 			}
@@ -169,27 +173,28 @@ public class Actor extends Entity {
 					inputs[dimensionsBeforeRaycast+i*dimensionsPerRaycast + 1] = 1;
 					entityIndex = dimensionsBeforeRaycast+i*dimensionsPerRaycast + 1;
 					inputs[dimensionsBeforeRaycast+i*dimensionsPerRaycast + 2] = ((Actor)entity).communicationOut;
+					inputs[dimensionsBeforeRaycast+i*dimensionsPerRaycast + 3] = genome.calculateGeneticDistance(((Actor)entity).genome);
 				} else if (entity instanceof Wheat) {
-					inputs[dimensionsBeforeRaycast+i*dimensionsPerRaycast + 3] = 1;
-					entityIndex = dimensionsBeforeRaycast+i*dimensionsPerRaycast + 3;
-				} else if (entity instanceof WheatGrain) {
 					inputs[dimensionsBeforeRaycast+i*dimensionsPerRaycast + 4] = 1;
 					entityIndex = dimensionsBeforeRaycast+i*dimensionsPerRaycast + 4;
-				} else if (entity instanceof Water) {
+				} else if (entity instanceof WheatGrain) {
 					inputs[dimensionsBeforeRaycast+i*dimensionsPerRaycast + 5] = 1;
 					entityIndex = dimensionsBeforeRaycast+i*dimensionsPerRaycast + 5;
-				} else if (entity instanceof Meat) {
+				} else if (entity instanceof Water) {
 					inputs[dimensionsBeforeRaycast+i*dimensionsPerRaycast + 6] = 1;
 					entityIndex = dimensionsBeforeRaycast+i*dimensionsPerRaycast + 6;
-				} else if (entity instanceof Tree) {
+				} else if (entity instanceof Meat) {
 					inputs[dimensionsBeforeRaycast+i*dimensionsPerRaycast + 7] = 1;
 					entityIndex = dimensionsBeforeRaycast+i*dimensionsPerRaycast + 7;
-				} else if (entity instanceof Wood) {
+				} else if (entity instanceof Tree) {
 					inputs[dimensionsBeforeRaycast+i*dimensionsPerRaycast + 8] = 1;
 					entityIndex = dimensionsBeforeRaycast+i*dimensionsPerRaycast + 8;
-				} else if (entity instanceof WoodTool) {
+				} else if (entity instanceof Wood) {
 					inputs[dimensionsBeforeRaycast+i*dimensionsPerRaycast + 9] = 1;
 					entityIndex = dimensionsBeforeRaycast+i*dimensionsPerRaycast + 9;
+				} else if (entity instanceof WoodTool) {
+					inputs[dimensionsBeforeRaycast+i*dimensionsPerRaycast + 10] = 1;
+					entityIndex = dimensionsBeforeRaycast+i*dimensionsPerRaycast + 10;
 				}
 				
 				inputs[entityIndex] /= entity.calcDist(pos);
@@ -227,34 +232,46 @@ public class Actor extends Entity {
 		communicationOut = outputs[6];
 		outputs[6] = 0;
 		float maxVal = outputs[0];
-		int maxIndex = 0;
-		for (int i=1; i<outputs.length-1; i++) {
-			if (outputs[i] > maxVal) {
-				maxIndex = i;
-				maxVal = outputs[i];
+		
+		float actionOutputs[] = Arrays.copyOfRange(outputs, 0, 6);
+		float softmaxOutputs[] = Genome.calculateSoftmax(actionOutputs);
+//		System.out.println(Arrays.toString(softmaxOutputs));
+		float rand = r.nextFloat();
+		int randomWeightedIndex = 0;
+		for (int i=0; i<softmaxOutputs.length; i++) {
+			if (rand < softmaxOutputs[i]) {
+				randomWeightedIndex = i;
+				break;
+			} else {
+				rand -= softmaxOutputs[i];
 			}
 		}
+//		System.out.println(randomWeightedIndex);
 		
-		if (maxIndex == 0) {
+//		for (int i=1; i<actionOutputs.length-1; i++) {
+//			
+//		}
+		
+		if (randomWeightedIndex == 0) {
 			currentDirection += 1;
 			currentDirection = currentDirection % 4;
-		} else if (maxIndex == 1) {
+		} else if (randomWeightedIndex == 1) {
 			currentDirection -= 1;
 			if (currentDirection < 0) {
 				currentDirection = 3;
 			}
 			currentDirection = currentDirection % 4;
-		} else if (maxIndex == 2) {
+		} else if (randomWeightedIndex == 2) {
 			moveForward(interpreter);
-		} else if (maxIndex == 3) {
+		} else if (randomWeightedIndex == 3) {
 			actionForward(interpreter);
-		} else if (maxIndex == 4) {
+		} else if (randomWeightedIndex == 4) {
 			if (heldResource == null) {
 				pickupForward(interpreter);
 			} else {
 				placeForward(interpreter);
 			}
-		} else if (maxIndex == 5) {
+		} else if (randomWeightedIndex == 5) {
 			matingPartner = null;
 			for (Entity entity1 : entityRayCasts) {
 				if (entity1 != null && entity1 instanceof Actor && entity1.calcDist(pos) <= 1) {
@@ -346,7 +363,7 @@ public class Actor extends Entity {
 			// Mutate and crossover the view radius and step size.
 			float viewStepSizePrime = (viewRadiusStepSize + matingPartner.viewRadiusStepSize) / 2f;
 			viewStepSizePrime *= Math.exp(0.5*r.nextGaussian() + 0.5*r.nextGaussian());
-			if (viewStepSizePrime < 0.1) viewStepSizePrime = 0.1f;
+			if (viewStepSizePrime < 0.01) viewStepSizePrime = 0.01f;
 			
 			float viewRadiusPrime = (viewRadius + matingPartner.viewRadius) / 2f;
 			viewRadiusPrime += viewStepSizePrime*r.nextGaussian();
@@ -358,6 +375,22 @@ public class Actor extends Entity {
 			
 			newActor.viewRadius = viewRadiusPrime;
 			newActor.viewRadiusStepSize = viewStepSizePrime;
+			
+			// Mutate and crossover the view fov and step size.
+			float fovStepSizePrime = (fovStepSize + matingPartner.fovStepSize) / 2f;
+			fovStepSizePrime *= Math.exp(0.5*r.nextGaussian() + 0.5*r.nextGaussian());
+			if (fovStepSizePrime < 0.01) fovStepSizePrime = 0.01f;
+			
+			float fovPrime = (fov + matingPartner.fov) / 2f;
+			fovPrime += fovStepSizePrime*r.nextGaussian();
+			if(fovPrime < 0) {
+				fovPrime = 0;
+			} else if (fovPrime > 2*Math.PI) {
+				fovPrime = (float) (2*Math.PI);
+			}
+			
+			newActor.fov = fovPrime;
+			newActor.fovStepSize = fovStepSizePrime;
 			
 			damageEntity(200);
 			newActor.setDurability(50);
@@ -463,9 +496,9 @@ public class Actor extends Entity {
 		for(int ray=0; ray<rayCastCount;ray++) {
 			float angle;
 			if (ray % 2 == 0) {
-				angle = (float) (-Math.ceil(ray/2f)*fov/(rayCastCount-1) + currentDirection*fov/2);
+				angle = (float) (-Math.ceil(ray/2f)*fov/(rayCastCount-1) + currentDirection*Math.PI/2);
 			} else {
-				angle = (float) (Math.ceil(ray/2f)*fov/(rayCastCount-1) + currentDirection*fov/2);
+				angle = (float) (Math.ceil(ray/2f)*fov/(rayCastCount-1) + currentDirection*Math.PI/2);
 			}
 
 			Entity closest = null;

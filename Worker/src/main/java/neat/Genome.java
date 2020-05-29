@@ -56,6 +56,18 @@ public class Genome {
 		return newNode.getId();
 	}
 	
+	public int addNode(TYPE type, double level, int nodeNumber) {
+		NodeGene newNode = new NodeGene(type, nodeNumber, level);
+		nodes.put(newNode.getId(), newNode);
+		
+		if (type == TYPE.INPUT) {
+			numInputs += 1;
+		} else if (type == TYPE.OUTPUT) {
+			numOutputs += 1;
+		}
+		return newNode.getId();
+	}
+	
 	public void addNewConnection(ConnectionGene newConn) {
 		int innov = counter.getInnovation(newConn.getInNode(), newConn.getOutNode());
 		
@@ -67,12 +79,25 @@ public class Genome {
 	}
 	
 	public void addConnectionMutation(Random r) {
-		NodeGene node1 = nodes.get(r.nextInt(nodes.size()));
-		NodeGene node2 = nodes.get(r.nextInt(nodes.size()));
+		
+		Object[] genes = nodes.values().toArray();
+		int node1r = r.nextInt(genes.length);
+		NodeGene node1 = (NodeGene)genes[node1r];
+		int node2r = r.nextInt(genes.length);
+		NodeGene node2 = (NodeGene)genes[node2r];
+		
+		if (node1 == null || node2 == null) {
+			boolean a = true;
+		}
 		
 		while (connections.containsKey(counter.getInnovation(node1.getId(), node2.getId()))) {
-			node1 = nodes.get(r.nextInt(nodes.size()));
-			node2 = nodes.get(r.nextInt(nodes.size()));
+			node1r = r.nextInt(genes.length);
+			node1 = (NodeGene)genes[node1r];
+			node2r = r.nextInt(genes.length);
+			node2 = (NodeGene)genes[node2r];
+			if (node1 == null || node2 == null) {
+				boolean a = true;
+			}
 		}
 		
 		float stepSize = 0.1f;
@@ -208,6 +233,7 @@ public class Genome {
 	
 	public Genome crossOverAndMutate(Genome otherGenome,Random r) {
 		Genome newGenome = new Genome(counter);
+		
 		int n = 0;
 		for (ConnectionGene conn : connections.values()) {
 			if (conn.isExpressed()) {
@@ -218,47 +244,114 @@ public class Genome {
 		double tauPrime = 1/Math.sqrt(2*n);
 		
 		for (NodeGene node : nodes.values()) {
-			newGenome.addNode(node.getType(), node.getLevel());
+			if (node.getType() == TYPE.INPUT || node.getType() == TYPE.OUTPUT) {
+				newGenome.addNode(node.getType(), node.getLevel());
+			}
 		}
+		
+
 		for (ConnectionGene conn : connections.values()) {
+			boolean notPresentInOtherGenome = false;
+			boolean isDisabledInOneGenome = false;
 			ConnectionGene newConn = conn.copy();
+			
+			if (!conn.isExpressed()) {
+				isDisabledInOneGenome = true;
+			}
+			
 			if (otherGenome.connections.containsKey(conn.getInnovation())) {
 				newConn.setStepSize((newConn.getStepSize() + otherGenome.connections.get(conn.getInnovation()).getStepSize())/2f);
 				newConn.setWeight((newConn.getWeight() + otherGenome.connections.get(conn.getInnovation()).getWeight())/2f);
-				
-				if(!conn.isExpressed() || !otherGenome.connections.get(conn.getInnovation()).isExpressed()) {
-					if (r.nextFloat() < 0.95) {
-						newConn.disable();
-					} else {
-						newConn.enable();
-					}
-				} else {
-					newConn.enable();
+				if (!otherGenome.connections.get(conn.getInnovation()).isExpressed()) {
+					isDisabledInOneGenome = true;
 				}
-				
 			} else {
-				if(!conn.isExpressed()) {
-					if (r.nextFloat() < 0.95) {
-						newConn.disable();
-					} else {
-						newConn.enable();
-					}
+				notPresentInOtherGenome = true;
+			}
+			
+			if (isDisabledInOneGenome) {
+				if (r.nextFloat() < 0.95) {
+					newConn.disable();
 				} else {
 					newConn.enable();
 				}
 			}
+			
 			if (newConn.isExpressed()) {
 				float stepSizePrime = (float) (newConn.getStepSize() * Math.exp(tauPrime*r.nextGaussian() + tau*r.nextGaussian()));
 				if (stepSizePrime < 0.01) {
 					stepSizePrime = 0.01f;
 				}
-				float weightPrime = (float) (newConn.getWeight() + stepSizePrime*r.nextGaussian());
+				
+				float weightDelta = (float) (stepSizePrime*r.nextGaussian());
+				
+				if (Math.abs(weightDelta) > 3) {
+					weightDelta = Math.copySign(3, weightDelta);
+				}
+				float weightPrime = newConn.getWeight() + weightDelta;
 				
 				newConn.setWeight(weightPrime);
 				newConn.setStepSize(stepSizePrime);
 			}
 			
-			newGenome.connections.put(newConn.getInnovation(), newConn);
+			if (!notPresentInOtherGenome || r.nextFloat() < 0.5) {
+				if (!newGenome.nodes.containsKey(newConn.getInNode())) {
+					newGenome.addNode(nodes.get(newConn.getInNode()).getType(), nodes.get(newConn.getInNode()).getLevel(), newConn.getInNode());
+				}
+				
+				if (!newGenome.nodes.containsKey(newConn.getOutNode())) {
+					newGenome.addNode(nodes.get(newConn.getOutNode()).getType(), nodes.get(newConn.getOutNode()).getLevel(), newConn.getOutNode());
+				}
+				
+				newGenome.connections.put(newConn.getInnovation(), newConn);
+				
+			}
+			
+		}
+		
+		for (ConnectionGene conn : otherGenome.connections.values()) {
+			
+			if (!connections.containsKey(conn.getInnovation())) {
+				if (r.nextFloat() < 0.5) {
+					ConnectionGene newConn = conn.copy();
+					
+					if (!conn.isExpressed()) {
+						if (r.nextFloat() < 0.95) {
+							newConn.enable();
+						} else {
+							newConn.disable();
+						}
+					}
+					
+					if (newConn.isExpressed()) {
+						float stepSizePrime = (float) (newConn.getStepSize() * Math.exp(tauPrime*r.nextGaussian() + tau*r.nextGaussian()));
+						if (stepSizePrime < 0.01) {
+							stepSizePrime = 0.01f;
+						}
+						
+						float weightDelta = (float) (stepSizePrime*r.nextGaussian());
+						
+						if (Math.abs(weightDelta) > 3) {
+							weightDelta = Math.copySign(3, weightDelta);
+						}
+						float weightPrime = newConn.getWeight() + weightDelta;
+						
+						newConn.setWeight(weightPrime);
+						newConn.setStepSize(stepSizePrime);
+					}
+					
+					if (!newGenome.nodes.containsKey(newConn.getInNode())) {
+						newGenome.addNode(otherGenome.nodes.get(newConn.getInNode()).getType(), otherGenome.nodes.get(newConn.getInNode()).getLevel(), newConn.getInNode());
+					}
+					
+					if (!newGenome.nodes.containsKey(newConn.getOutNode())) {
+						newGenome.addNode(otherGenome.nodes.get(newConn.getOutNode()).getType(), otherGenome.nodes.get(newConn.getOutNode()).getLevel(), newConn.getOutNode());
+					}
+					
+					newGenome.connections.put(newConn.getInnovation(), newConn);
+				}
+			}
+			
 		}
 
 		// Mutate and crossover the connection mutation probability and step size.
@@ -293,8 +386,6 @@ public class Genome {
 		if (r.nextDouble() < newGenome.connectionMutationProb) {
 			newGenome.addConnectionMutation(r);
 		}
-		
-		
 		
 		return newGenome;
 	}
@@ -334,5 +425,55 @@ public class Genome {
 		}	
 		return outputs;
 		
+	}
+	
+	public float calculateGeneticDistance(Genome otherGenome) {
+		float distance = 0;
+		float conjointDisjointCoeff = 2;
+		float weightCoeff = 1;
+		int numberOfExcessAndDisjointGenes = 0;
+		int genesInCommon = 0;
+		float weightDifference = 0;
+		
+		for (ConnectionGene conn : connections.values()) {
+			if (otherGenome.connections.containsKey(conn.getInnovation())) {
+				weightDifference += Math.abs(conn.getWeight() - otherGenome.connections.get(conn.getInnovation()).getWeight());
+				genesInCommon += 1;
+			}
+		}
+		
+		float averageWeightDifference = weightDifference / (float)genesInCommon;
+		
+		numberOfExcessAndDisjointGenes = connections.size() - genesInCommon + otherGenome.connections.size() - genesInCommon;
+		
+		distance = conjointDisjointCoeff * numberOfExcessAndDisjointGenes + weightCoeff * averageWeightDifference;
+		
+		return distance;
+	}
+	
+	public static float[] calculateSoftmax(float[] arr) {
+		
+		float[] e_x = new float[arr.length];
+		float e_x_sum = 0;
+		float maxX = arr[0];
+		
+		for (int i=1; i<arr.length; i++) {
+			if (arr[i] > maxX) {
+				maxX = arr[i];
+			}
+		}
+		
+		
+		for (int i=0; i<arr.length; i++) {
+			e_x[i] = (float) Math.exp(arr[i] - maxX);
+			e_x_sum += e_x[i];
+		}
+		
+		for (int i=0; i<arr.length; i++) {
+			e_x[i] /= e_x_sum;
+		}
+		
+		
+		return e_x;
 	}
 }

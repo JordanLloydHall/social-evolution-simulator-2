@@ -30,12 +30,12 @@ public class WorkerThread extends Thread {
 		while (!done) {
 			try {
 				if (!entityStepQueue.isEmpty()) {
-					currentEntity = entityStepQueue.poll(100, TimeUnit.MILLISECONDS);
+					currentEntity = entityStepQueue.poll(50, TimeUnit.MILLISECONDS);
 					if (currentEntity != null && currentEntity.getIsVisible()) {
 						currentEntity.onStep(interpreter, env);
 					}
-				} else if (!checkSurroundingsQueue.isEmpty()) {
-					currentEntity = checkSurroundingsQueue.poll(100, TimeUnit.MILLISECONDS);
+				} else {
+					currentEntity = checkSurroundingsQueue.poll(50, TimeUnit.MILLISECONDS);
 					if (currentEntity != null && currentEntity.getIsVisible()) {
 						env.checkSurroundings(currentEntity);
 					}
