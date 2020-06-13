@@ -274,7 +274,7 @@ public class Actor extends Entity {
 		} else if (randomWeightedIndex == 5) {
 			matingPartner = null;
 			for (Entity entity1 : entityRayCasts) {
-				if (entity1 != null && entity1 instanceof Actor && entity1.calcDist(pos) <= 1) {
+				if (entity1 != null && entity1 instanceof Actor) {
 					matingPartner = (Actor)entity1;
 					break;
 				}
@@ -362,7 +362,7 @@ public class Actor extends Entity {
 			
 			// Mutate and crossover the view radius and step size.
 			float viewStepSizePrime = (viewRadiusStepSize + matingPartner.viewRadiusStepSize) / 2f;
-			viewStepSizePrime *= Math.exp(0.5*r.nextGaussian() + 0.5*r.nextGaussian());
+			viewStepSizePrime *= Math.exp(0.001*r.nextGaussian() + 0.001*r.nextGaussian());
 			if (viewStepSizePrime < 0.01) viewStepSizePrime = 0.01f;
 			
 			float viewRadiusPrime = (viewRadius + matingPartner.viewRadius) / 2f;
@@ -378,7 +378,7 @@ public class Actor extends Entity {
 			
 			// Mutate and crossover the view fov and step size.
 			float fovStepSizePrime = (fovStepSize + matingPartner.fovStepSize) / 2f;
-			fovStepSizePrime *= Math.exp(0.5*r.nextGaussian() + 0.5*r.nextGaussian());
+			fovStepSizePrime *= Math.exp(0.001*r.nextGaussian() + 0.001*r.nextGaussian());
 			if (fovStepSizePrime < 0.01) fovStepSizePrime = 0.01f;
 			
 			float fovPrime = (fov + matingPartner.fov) / 2f;

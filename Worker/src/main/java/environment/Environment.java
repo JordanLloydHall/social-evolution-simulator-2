@@ -63,7 +63,7 @@ public class Environment {
 		for (int x=0; x<worldWidth; x++) {
 			for (int y=0; y<worldHeight; y++) {
 				
-				float generatedNumber = (float) ((openSimplex.eval(x/20f, y/20f)+1)/2f);
+				float generatedNumber = (float) ((openSimplex.eval(x/40f, y/40f)+1)/2f);
 				float distance_x = Math.abs(x - worldWidth * 0.5f);
 				float distance_y = Math.abs(y - worldWidth * 0.5f);
 				float distance = Math.max(distance_x, distance_y); // circular mask
@@ -195,18 +195,18 @@ public class Environment {
 		}
 		generateKDTree();
 		
-		if (time == 10000 || numActors == 0) {
-			System.out.println(numActors);
-			for (int i=0; i<entityProcessors.length; i++) {
-				entityProcessors[i].done = true;
-				try {
-					entityProcessors[i].join();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-			return true;
-		}
+//		if (time == 10000 || numActors == 0) {
+//			System.out.println(numActors);
+//			for (int i=0; i<entityProcessors.length; i++) {
+//				entityProcessors[i].done = true;
+//				try {
+//					entityProcessors[i].join();
+//				} catch (InterruptedException e) {
+//					e.printStackTrace();
+//				}
+//			}
+//			return true;
+//		}
 		
 		return false;
 	}
