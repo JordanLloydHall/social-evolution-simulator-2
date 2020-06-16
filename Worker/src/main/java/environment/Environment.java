@@ -1,5 +1,6 @@
 package main.java.environment;
 
+import java.awt.Graphics;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Properties;
@@ -22,7 +23,6 @@ public class Environment {
 	private final int worldWidth;
 	private final int worldHeight;
 	private Entity[][] worldGrid;
-	private KDTree worldKDTree;
 	private ArrayList<Entity> entityList;
 	private Interpreter interpreter;
 	private Counter counter;
@@ -56,7 +56,6 @@ public class Environment {
 		
 		worldGrid = new Entity[worldWidth][worldHeight];
 		entityList = new ArrayList<Entity>();
-		worldKDTree = new KDTree(2);
 		
 		OpenSimplexNoise openSimplex = new OpenSimplexNoise();
 		
@@ -66,7 +65,7 @@ public class Environment {
 				float generatedNumber = (float) ((openSimplex.eval(x/40f, y/40f)+1)/2f);
 				float distance_x = Math.abs(x - worldWidth * 0.5f);
 				float distance_y = Math.abs(y - worldWidth * 0.5f);
-				float distance = Math.max(distance_x, distance_y); // circular mask
+				float distance = Math.max(distance_x, distance_y); // Square mask
 
 				float max_width = worldWidth * 0.5f - 0.0f;
 				float delta = distance / max_width;
@@ -94,19 +93,6 @@ public class Environment {
 		}
 		
 	}
-	
-	public void generateKDTree() {
-		worldKDTree = new KDTree(2);
-		
-		for (int x=0; x<worldWidth; x++) {
-			for (int y=0; y<worldHeight; y++) {
-				
-				if (worldGrid[x][y] != null && worldGrid[x][y].getIsVisible()) {
-					worldKDTree.insert(new double[] {x, y}, worldGrid[x][y]);
-				}
-			}
-		}
-	}
 
 	public int getWorldWidth() { return worldWidth; }
 	
@@ -114,7 +100,6 @@ public class Environment {
 	
 	public void resetWorld() {
 		worldGrid = new Entity[worldWidth][worldHeight];
-		worldKDTree = new KDTree(2);
 	}
 	
 	public void checkSurroundings(Entity e) {
@@ -145,7 +130,6 @@ public class Environment {
 				}
 			}
 			worldGrid[x][y] = entity;
-			worldKDTree.insert(new double[] {x,  y}, entity);
 		}
 	}
 	
@@ -178,11 +162,11 @@ public class Environment {
 //				entityStepProcessingQueue.add(e)
 //			}
 //		}
-		for (Entity newEntity : entityList) {
-			if (newEntity instanceof Actor) {
-				numActors +=1;
-			}
-		}
+//		for (Entity newEntity : entityList) {
+//			if (newEntity instanceof Actor) {
+//				numActors +=1;
+//			}
+//		}
 		
 		while (!entityStepProcessingQueue.isEmpty()) {
 		}
@@ -193,20 +177,6 @@ public class Environment {
 		if (isValidPosition(x, y) && getEntity(x, y) == null) {
 			insertEntity(new Wheat(properties, new Point(x,y), r), x, y);
 		}
-		generateKDTree();
-		
-//		if (time == 10000 || numActors == 0) {
-//			System.out.println(numActors);
-//			for (int i=0; i<entityProcessors.length; i++) {
-//				entityProcessors[i].done = true;
-//				try {
-//					entityProcessors[i].join();
-//				} catch (InterruptedException e) {
-//					e.printStackTrace();
-//				}
-//			}
-//			return true;
-//		}
 		
 		return false;
 	}
@@ -215,14 +185,22 @@ public class Environment {
 		return (x >= 0 && y >= 0 && x < getWorldWidth() && y < getWorldHeight());
 	}
 	
-	public Entity[] getEntitiesWithinRange(float[] pos, float viewRadius) {
+	public ArrayList<Entity> getEntitiesWithinRange(float[] pos, float viewRadius) {		
 		
+		ArrayList<Entity> entityArray = new ArrayList<Entity>();
 		
-		Object[] objectArray = worldKDTree.range(new double[] {pos[0]-viewRadius, pos[1]-viewRadius}, new double[] {pos[0]+viewRadius, pos[1]+viewRadius});
-		Entity[] entityArray = new Entity[objectArray.length];
+		int startX = (int) Math.floor(pos[0] - viewRadius);
+		int endX = (int) Math.ceil(pos[0] + viewRadius);
+		int startY = (int) Math.floor(pos[1] - viewRadius);
+		int endY = (int) Math.ceil(pos[1] + viewRadius);
 		
-		for (int i=0; i<entityArray.length; i++) {
-			entityArray[i] = (Entity)objectArray[i];
+		for (int y=startY; y<=endY; y++) {
+			for (int x=startX; x<=endX; x++) {
+				Entity e = getEntity(x,y);
+				if (e != null && !(x==pos[0] && y==pos[1])) {
+					entityArray.add(e);
+				}
+			}
 		}
 		
 		return entityArray;

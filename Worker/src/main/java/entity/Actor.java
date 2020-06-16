@@ -1,6 +1,8 @@
 package main.java.entity;
 
+import java.awt.Graphics;
 import java.awt.Point;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Properties;
 import java.util.Random;
@@ -33,6 +35,9 @@ public class Actor extends Entity {
 	private float fovStepSize;
 	
 	private int currentDirection;
+	
+	public Graphics g;
+	public int scalar;
 	
 	private int totalNetworkInputs;
 	private int totalNetworkOutputs;
@@ -77,7 +82,7 @@ public class Actor extends Entity {
 		
 		viewRadius = Float.parseFloat(properties.getProperty("ACTOR_VIEW_RADIUS"));
 		viewRadiusStepSize = 0.1f;
-		fov = (float) Math.PI;
+		fov = (float) Math.PI + 0.1f;
 		fovStepSize = 0.1f;
 		
 		
@@ -246,11 +251,6 @@ public class Actor extends Entity {
 				rand -= softmaxOutputs[i];
 			}
 		}
-//		System.out.println(randomWeightedIndex);
-		
-//		for (int i=1; i<actionOutputs.length-1; i++) {
-//			
-//		}
 		
 		if (randomWeightedIndex == 0) {
 			currentDirection += 1;
@@ -400,10 +400,6 @@ public class Actor extends Entity {
 			return null;
 		}
 	}
-	
-//	public float getViewRadius() {return viewRadius;}
-//	
-//	public float getViewRadiusSS() {return viewRadiusStepSize;}
 
 	@Override
 	public Entity getNewConvert() {
@@ -489,9 +485,10 @@ public class Actor extends Entity {
 
 	public Entity[] getRayCasts(Environment env) {
 		
+		
 		Entity[] rayCasts = new Entity[rayCastCount];
 		
-		Entity[] withinRange = env.getEntitiesWithinRange(Entity.copyFromIntArray(getPos()), (float)viewRadius);
+		ArrayList<Entity> withinRange = env.getEntitiesWithinRange(Entity.copyFromIntArray(getPos()), (float)viewRadius);
 		
 		for(int ray=0; ray<rayCastCount;ray++) {
 			float angle;
@@ -500,24 +497,30 @@ public class Actor extends Entity {
 			} else {
 				angle = (float) (Math.ceil(ray/2f)*fov/(rayCastCount-1) + currentDirection*Math.PI/2);
 			}
+			if (angle < 0) {
+				angle += (float) (2f*Math.PI);
+			} else if (angle > 2f*Math.PI) {
+				angle -= (float) (2f*Math.PI);
+			}
 
 			Entity closest = null;
 			float closestDist = viewRadius + 1;
 			
-			for (int pTargetEntity=0; pTargetEntity<withinRange.length;pTargetEntity++) {
-				if (withinRange[pTargetEntity] != null && !Arrays.equals(getPos(), withinRange[pTargetEntity].getPos()) && isIntersectingAngle(angle, Entity.copyFromIntArray(withinRange[pTargetEntity].getPos()))) {
+			for (int pTargetEntity=0; pTargetEntity<withinRange.size();pTargetEntity++) {
+				Entity e = withinRange.get(pTargetEntity);
+				if (e != null && !Arrays.equals(getPos(), e.getPos()) && isIntersectingAngle(angle, Entity.copyFromIntArray(e.getPos()))) {
 
-					if (getPoint().distance(withinRange[pTargetEntity].getPoint()) < closestDist) {
-						closest = withinRange[pTargetEntity];
-						closestDist = (float) getPoint().distance(withinRange[pTargetEntity].getPoint());
+					if (getPoint().distance(e.getPoint()) < closestDist) {
+						closest = e;
+						closestDist = (float) getPoint().distance(e.getPoint());
 					}
-				} 
+				}
 			}
+			
 			if (closest != null) {
 				rayCasts[ray] = closest;
 			}
 		}
-		
 		return rayCasts;
 	}
 	

@@ -1,5 +1,6 @@
 package main.java.entity;
 
+import java.awt.Graphics;
 import java.awt.Point;
 import java.util.Properties;
 import java.util.Random;
@@ -201,6 +202,4 @@ public abstract class Entity {
 	 * @return The entity that replaces this one.
 	 */
 	public abstract Entity getNewConvert();
-
-	
 }

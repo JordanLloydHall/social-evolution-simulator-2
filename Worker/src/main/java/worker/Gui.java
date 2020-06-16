@@ -125,6 +125,7 @@ public class Gui {
             			canvas.revalidate();
             			paintAgain();
             		}
+            		Graphics g = canvas.getGraphics();
 	            	environment.step(timeSteps);
 	            	System.out.println("Timestep " + timeSteps + " completed. Time taken: " + Math.round((new Date().getTime() - time)*100f/1000f)/100f);
 	            	timeSteps += 1;
@@ -163,7 +164,6 @@ public class Gui {
 		        return(new Dimension(env.getWorldWidth()*scaler, env.getWorldHeight()*scaler) );
 		    }
 			public void paintComponent(Graphics g) {
-				
 				
 				float xMultiplier = this.getWidth()/(float)environment.getWorldWidth();
 				float yMultiplier = this.getHeight()/(float)environment.getWorldHeight();
