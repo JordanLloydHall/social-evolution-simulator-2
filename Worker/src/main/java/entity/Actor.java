@@ -29,15 +29,12 @@ public class Actor extends Entity {
 	private final int rayCastCount;
 	private final int maxAge;
 
-	private float viewRadius;
+	public float viewRadius;
 	private float viewRadiusStepSize;
-	private float fov;
+	public float fov;
 	private float fovStepSize;
 	
 	private int currentDirection;
-	
-	public Graphics g;
-	public int scalar;
 	
 	private int totalNetworkInputs;
 	private int totalNetworkOutputs;
@@ -49,10 +46,26 @@ public class Actor extends Entity {
 	private Actor matingPartner;
 	private float communicationOut;
 	
-	private int age;
+	public int age;
+	public boolean asexual;
 	
-	private Genome genome;
+	public float size;
+	private float sizeStepSize;
+	
+	public float speed;
+	private float speedStepSize;
+	
+	public float gestationCost;
+	private float gestationCostStepSize;
+	
+	public int numActorsSeen;
+	public float totalGeneticDistance;
+	
+	public Genome genome;
+	public Genome speciesGenome;
 	private Counter counter;
+	
+	
 	
 	public enum Directions {
 		UP(1),
@@ -77,13 +90,27 @@ public class Actor extends Entity {
 	 * @since 1.0
 	 */
 
-	public Actor(Properties properties, Point newPos, Counter counter, Genome inheritedGenome, Random r) {
+	public Actor(Properties properties, Point newPos, Counter counter, Genome inheritedGenome, Random r, Genome speciesGenome) {
 		super(properties, newPos, r);
 		
-		viewRadius = Float.parseFloat(properties.getProperty("ACTOR_VIEW_RADIUS"));
+		age = 0;
+		
+		viewRadius = r.nextFloat()*10+1;
 		viewRadiusStepSize = 0.1f;
-		fov = (float) Math.PI + 0.1f;
+		fov = 2f*(float)Math.PI*r.nextFloat();
+		if(fov < Math.PI/2f) {
+			fov = (float) (Math.PI/2f);
+		}
 		fovStepSize = 0.1f;
+		
+		size = r.nextFloat()*2+1;
+		sizeStepSize = 0.1f;
+		
+		speed = r.nextFloat()*2+1;
+		speedStepSize = 0.1f;
+		
+		gestationCost = r.nextInt(20)+40;
+		gestationCostStepSize = 0.1f;
 		
 		
 		rayCastCount = Integer.parseInt(properties.getProperty("ACTOR_VIEW_CASTS"));
@@ -97,8 +124,8 @@ public class Actor extends Entity {
 		// 		communication output from actor,
 		//		genetic distance from actor)
 		//			
-		// OUTPUTS : turn left, turn right, action forward, Move forward, pickup/putdown, reproduce, communication outward
-		numberOfDifferentEntities = 8;
+		// OUTPUTS : turn left, turn right, action forward, Move forward, pickup/putdown, asexually reproduce, sexually reproduce, communication outward
+		numberOfDifferentEntities = 9;
 		numberOfDifferentTools = 1;
 		dimensionsPerRaycast = 3 + numberOfDifferentEntities;
 		dimensionsBeforeRaycast = 2 + numberOfDifferentTools + numberOfDifferentEntities - 2;
@@ -114,6 +141,7 @@ public class Actor extends Entity {
 		
 		if (inheritedGenome != null) {
 			genome = inheritedGenome;
+			
 			if (Math.random() < 0.0005) {genome.visualize(new Random(), "newActor");}
 		} else {
 			genome = new Genome(counter);
@@ -136,15 +164,57 @@ public class Actor extends Entity {
 //				}
 //			}
 			
-			for (int i=0; i<totalNetworkOutputs; i++) {
-				for (int j=0; j<totalNetworkInputs; j++) {
+			for (int i=0; i<5+rayCastCount*2; i++) {
+				genome.addNode(TYPE.HIDDEN, 0.5f);
+			}
+			
+			for (int i=totalNetworkOutputs; i<totalNetworkOutputs+5; i++) {
+				for (int j=0; j<dimensionsBeforeRaycast; j++) {
 					ConnectionGene newConn = new ConnectionGene(j, i+totalNetworkInputs, (float) r.nextGaussian(), 0.1f, true, -1);
 					genome.addNewConnection(newConn);
 				}
 			}
+			
+			for (int i=totalNetworkInputs; i<totalNetworkInputs+totalNetworkOutputs; i++) {
+				for (int j=totalNetworkInputs+totalNetworkOutputs; j<totalNetworkInputs+totalNetworkOutputs+5; j++) {
+					ConnectionGene newConn = new ConnectionGene(j, i, (float) r.nextGaussian(), 0.1f, true, -1);
+					genome.addNewConnection(newConn);
+				}
+			}
+			
+			for (int i=0; i<2; i++) {
+				for (int ray=0; ray<rayCastCount; ray++) {
+				
+					for (int j=dimensionsBeforeRaycast+ray*dimensionsPerRaycast; j<dimensionsBeforeRaycast+(ray+1)*dimensionsPerRaycast; j++) {
+						ConnectionGene newConn = new ConnectionGene(j, totalNetworkInputs+totalNetworkOutputs+5+ray*2+i, (float) r.nextGaussian(), 0.1f, true, -1);
+						genome.addNewConnection(newConn);
+				
+					}
+				}
+			}
+			
+			for (int i=0; i<2; i++) {
+				for (int ray=0; ray<rayCastCount; ray++) {
+				
+					for (int j=totalNetworkInputs; j<totalNetworkInputs+totalNetworkOutputs; j++) {
+						ConnectionGene newConn = new ConnectionGene(totalNetworkInputs+totalNetworkOutputs+5+ray*2+i, j, (float) r.nextGaussian(), 0.1f, true, -1);
+						genome.addNewConnection(newConn);
+				
+					}
+				}
+			}
+			
+//			for (int i=0;i<50;i++) {
+//				int inNode = r.nextInt(totalNetworkInputs);
+//				int outNode = totalNetworkInputs + r.nextInt(totalNetworkOutputs);
+//				ConnectionGene newConn = new ConnectionGene(inNode, outNode, (float) r.nextGaussian(), 1f, true, -1);
+//				genome.addNewConnection(newConn);
+//			}
 			if (Math.random() < 0.0005) {genome.visualize(new Random(), "newActor");}
-
+			
 		}
+		
+		this.speciesGenome = counter.speciate(genome, speciesGenome);
 		
 		killedByActor = false;
 	}
@@ -165,6 +235,10 @@ public class Actor extends Entity {
 
 	@Override
 	public void onStep(Interpreter interpreter, Environment env) {
+		
+		numActorsSeen = 0;
+		totalGeneticDistance = 0;
+		
 		Entity[] entityRayCasts = getRayCasts(env);
 		
 		float[] inputs = new float[totalNetworkInputs];
@@ -179,6 +253,8 @@ public class Actor extends Entity {
 					entityIndex = dimensionsBeforeRaycast+i*dimensionsPerRaycast + 1;
 					inputs[dimensionsBeforeRaycast+i*dimensionsPerRaycast + 2] = ((Actor)entity).communicationOut;
 					inputs[dimensionsBeforeRaycast+i*dimensionsPerRaycast + 3] = genome.calculateGeneticDistance(((Actor)entity).genome);
+					numActorsSeen += 1;
+					totalGeneticDistance += inputs[dimensionsBeforeRaycast+i*dimensionsPerRaycast + 3];
 				} else if (entity instanceof Wheat) {
 					inputs[dimensionsBeforeRaycast+i*dimensionsPerRaycast + 4] = 1;
 					entityIndex = dimensionsBeforeRaycast+i*dimensionsPerRaycast + 4;
@@ -200,6 +276,10 @@ public class Actor extends Entity {
 				} else if (entity instanceof WoodTool) {
 					inputs[dimensionsBeforeRaycast+i*dimensionsPerRaycast + 10] = 1;
 					entityIndex = dimensionsBeforeRaycast+i*dimensionsPerRaycast + 10;
+				} else if (entity instanceof Egg) {
+					inputs[dimensionsBeforeRaycast+i*dimensionsPerRaycast + 11] = 1;
+					entityIndex = dimensionsBeforeRaycast+i*dimensionsPerRaycast + 11;
+					inputs[dimensionsBeforeRaycast+i*dimensionsPerRaycast + 3] = genome.calculateGeneticDistance(((Egg)entity).getGenome());
 				}
 				
 				inputs[entityIndex] /= entity.calcDist(pos);
@@ -209,15 +289,17 @@ public class Actor extends Entity {
 		Resource entity = heldResource;
 		if (entity != null) {
 			if (entity instanceof Wheat) {
-				inputs[2 + 0] = 1;
+				inputs[2 + numberOfDifferentTools + 0] = 1;
 			} else if (entity instanceof WheatGrain) {
-				inputs[2 + 1] = 1;
+				inputs[2 + numberOfDifferentTools + 1] = 1;
 			} else if (entity instanceof Meat) {
-				inputs[2 + 2] = 1;
+				inputs[2 + numberOfDifferentTools + 2] = 1;
 			} else if (entity instanceof Tree) {
-				inputs[2 + 3] = 1;
+				inputs[2 + numberOfDifferentTools + 3] = 1;
 			} else if (entity instanceof Wood) {
-				inputs[2 + 4] = 1;
+				inputs[2 + numberOfDifferentTools + 4] = 1;
+			} else if (entity instanceof Egg) {
+				inputs[2 + numberOfDifferentTools + 5] = 1;
 			}
 		}
 		
@@ -225,7 +307,7 @@ public class Actor extends Entity {
 		
 		if (tool != null) {
 			if (tool instanceof WoodTool) {
-				inputs[dimensionsBeforeRaycast - numberOfDifferentTools + 0] = equippedTool.getUsesLeft() / equippedTool.getMaxUsesLeft();
+				inputs[2 + 0] = equippedTool.getUsesLeft() / equippedTool.getMaxUsesLeft();
 			}
 		}
 		
@@ -262,22 +344,59 @@ public class Actor extends Entity {
 			}
 			currentDirection = currentDirection % 4;
 		} else if (randomWeightedIndex == 2) {
-			moveForward(interpreter);
+			
+//			moveForward(interpreter);
+			float speedFound = (int)speed;
+			boolean positionFound = false;
+			while (speedFound >= 1 && !positionFound) {
+				int[] newPos = new int[] {(int) Math.round(getPos()[0] + speedFound*Math.cos(currentDirection*Math.PI/2)),(int) Math.round(getPos()[1] + speedFound*Math.sin(currentDirection*Math.PI/2))};
+				if (env.getEntity(newPos[0], newPos[1]) == null) {
+					interpreter.addToMoveQueue(getPos(), newPos);
+					damageEntity((int)Math.round(Math.pow(speedFound,2)));
+					positionFound = true;
+				} else {
+					speedFound -= 1;
+				}
+			}
+			
+			
+			
 		} else if (randomWeightedIndex == 3) {
-			actionForward(interpreter);
+//			actionForward(interpreter);
+			for (Entity e : entityRayCasts) {
+				if (e != null && e.calcDist(pos) <= size) {
+					interpreter.addToActionQueue(getPos(), e.getPos());
+					break;
+				}
+			}
 		} else if (randomWeightedIndex == 4) {
 			if (heldResource == null) {
 				pickupForward(interpreter);
+				for (Entity e : entityRayCasts) {
+					if (e != null && !(e instanceof Resource) && e.calcDist(pos) <= size) {
+						interpreter.addToPickupQueue(getPos(), e.getPos());
+						break;
+					}
+				}
 			} else {
 				placeForward(interpreter);
+				for (Entity e : entityRayCasts) {
+					if (e != null && !(e instanceof Resource) && e.calcDist(pos) <= size) {
+						interpreter.addToPlaceQueue(getPos(), e.getPos());
+						break;
+					}
+				}
 			}
-		} else if (randomWeightedIndex == 5) {
+		} else if (randomWeightedIndex == 5 && durability > 4*gestationCost) {
 			matingPartner = null;
 			for (Entity entity1 : entityRayCasts) {
-				if (entity1 != null && entity1 instanceof Actor) {
+				if (entity1 != null && entity1 instanceof Actor && genome.calculateGeneticDistance(((Actor)entity1).genome) <= 50) {
 					matingPartner = (Actor)entity1;
 					break;
 				}
+			}
+			if (matingPartner == null) {
+				matingPartner = this;
 			}
 			boolean spawned = false;
 			for (int x=this.getPos()[0]-1; x<=this.getPos()[0]+1; x++) {
@@ -285,16 +404,22 @@ public class Actor extends Entity {
 					if (!spawned && env.isValidPosition(x, y) && !(this.getPos()[0] == x && this.getPos()[1] == y) && env.getEntity(x, y) == null) {
 						interpreter.addToSpawnQueue(getPos(), new int[] {x,y});
 						spawned = true;
+						asexual = false;
 					}
 				}
 			}
+			if (matingPartner == this) {
+				asexual = true;
+			}
 		}
 		
-		damageEntity(1);
+		damageEntity((int)Math.round(Math.pow(size,2) + Math.max(0,(genome.getNumberOfConnections()-400f)/100f)));
 		
 		age += 1;
 		if (age >= maxAge) {
 			durability = 0;
+			destroyed = true;
+			interpreter.addToConvertQueue(getPos());
 			
 		}
 		
@@ -316,15 +441,19 @@ public class Actor extends Entity {
 	}
 	
 	private void actionForward(Interpreter interpreter) {
-		if (currentDirection == 0) {
-			interpreter.addToActionQueue(getPos(), new int[] {getPos()[0] + 1,getPos()[1]});
-		} else if (currentDirection == 1) {
-			interpreter.addToActionQueue(getPos(), new int[] {getPos()[0],getPos()[1] + 1});
-		} else if (currentDirection == 2) {
-			interpreter.addToActionQueue(getPos(), new int[] {getPos()[0] - 1,getPos()[1]});
-		} else if (currentDirection == 3) {
-			interpreter.addToActionQueue(getPos(), new int[] {getPos()[0],getPos()[1] - 1});
+		
+		for (int i=0; i<(int)size; i++) {
+			if (currentDirection == 0) {
+				interpreter.addToActionQueue(getPos(), new int[] {getPos()[0] + 1,getPos()[1]});
+			} else if (currentDirection == 1) {
+				interpreter.addToActionQueue(getPos(), new int[] {getPos()[0],getPos()[1] + 1});
+			} else if (currentDirection == 2) {
+				interpreter.addToActionQueue(getPos(), new int[] {getPos()[0] - 1,getPos()[1]});
+			} else if (currentDirection == 3) {
+				interpreter.addToActionQueue(getPos(), new int[] {getPos()[0],getPos()[1] - 1});
+			}
 		}
+		
 	}
 	
 	private void pickupForward(Interpreter interpreter) {
@@ -354,21 +483,28 @@ public class Actor extends Entity {
 	@Override
 	public Entity getNewChild(int x, int y) {
 
-		if (durability > 200 && matingPartner != null) {
+		if (durability > 250 && matingPartner != null) {
 			Genome newGenome;
 			newGenome = genome.crossOverAndMutate(matingPartner.genome, r);
 			
-			Actor newActor = new Actor(properties, new Point(0,0), counter, newGenome, r);
+			Actor newActor = new Actor(properties, new Point(0,0), counter, newGenome, r, speciesGenome);
 			
 			// Mutate and crossover the view radius and step size.
-			float viewStepSizePrime = (viewRadiusStepSize + matingPartner.viewRadiusStepSize) / 2f;
+			float viewStepSizePrime = viewRadiusStepSize;
+			if (r.nextFloat() > 0.5) {
+				viewStepSizePrime = matingPartner.viewRadiusStepSize;
+			}
 			viewStepSizePrime *= Math.exp(0.001*r.nextGaussian() + 0.001*r.nextGaussian());
 			if (viewStepSizePrime < 0.01) viewStepSizePrime = 0.01f;
 			
-			float viewRadiusPrime = (viewRadius + matingPartner.viewRadius) / 2f;
+			float viewRadiusPrime = viewRadius;
+			if (r.nextFloat() > 0.5) {
+				viewRadiusPrime = matingPartner.viewRadius;
+			}
+			
 			viewRadiusPrime += viewStepSizePrime*r.nextGaussian();
-			if(viewRadiusPrime < 1) {
-				viewRadiusPrime = 1;
+			if(viewRadiusPrime < 3) {
+				viewRadiusPrime = 3;
 			} else if (viewRadiusPrime > 10) {
 				viewRadiusPrime = 10;
 			}
@@ -377,14 +513,20 @@ public class Actor extends Entity {
 			newActor.viewRadiusStepSize = viewStepSizePrime;
 			
 			// Mutate and crossover the view fov and step size.
-			float fovStepSizePrime = (fovStepSize + matingPartner.fovStepSize) / 2f;
+			float fovStepSizePrime = fovStepSize;
+			if (r.nextFloat() > 0.5) {
+				fovStepSize = matingPartner.fovStepSize;
+			}
 			fovStepSizePrime *= Math.exp(0.001*r.nextGaussian() + 0.001*r.nextGaussian());
 			if (fovStepSizePrime < 0.01) fovStepSizePrime = 0.01f;
 			
-			float fovPrime = (fov + matingPartner.fov) / 2f;
+			float fovPrime = fov;
+			if (r.nextFloat() > 0.5) {
+				fovPrime = matingPartner.fov;
+			}
 			fovPrime += fovStepSizePrime*r.nextGaussian();
-			if(fovPrime < 0) {
-				fovPrime = 0;
+			if(fovPrime < Math.PI/2f) {
+				fovPrime = (float) (Math.PI/2f);
 			} else if (fovPrime > 2*Math.PI) {
 				fovPrime = (float) (2*Math.PI);
 			}
@@ -392,10 +534,76 @@ public class Actor extends Entity {
 			newActor.fov = fovPrime;
 			newActor.fovStepSize = fovStepSizePrime;
 			
-			damageEntity(200);
-			newActor.setDurability(50);
 			
-			return newActor;
+			// Mutate and crossover the view radius and step size.
+			float sizeStepPrime = sizeStepSize;
+			if (r.nextFloat() > 0.5) {
+				sizeStepPrime = matingPartner.sizeStepSize;
+			}
+			sizeStepPrime *= Math.exp(0.001*r.nextGaussian() + 0.001*r.nextGaussian());
+			if (sizeStepPrime < 0.01) sizeStepPrime = 0.01f;
+			
+			float sizePrime = size;
+			if (r.nextFloat() > 0.5) {
+				sizePrime = matingPartner.size;
+			}
+			
+			sizePrime += sizeStepPrime*r.nextGaussian();
+			if(sizePrime < 1) {
+				sizePrime = 1;
+			}
+			
+			newActor.size = sizePrime;
+			newActor.sizeStepSize = sizeStepPrime;
+			
+			
+			// Mutate and crossover the view radius and step size.
+			float speedStepPrime = speedStepSize;
+			if (r.nextFloat() > 0.5) {
+				speedStepPrime = matingPartner.speedStepSize;
+			}
+			speedStepPrime *= Math.exp(0.001*r.nextGaussian() + 0.001*r.nextGaussian());
+			if (speedStepPrime < 0.01) speedStepPrime = 0.01f;
+			
+			float speedPrime = speed;
+			if (r.nextFloat() > 0.5) {
+				speedPrime = matingPartner.speed;
+			}
+			
+			speedPrime += speedStepPrime*r.nextGaussian();
+			if(speedPrime < 1) {
+				speedPrime = 1;
+			}
+			
+			newActor.speed = speedPrime;
+			newActor.speedStepSize = speedStepPrime;
+			
+			// Mutate and crossover the view radius and step size.
+			float gcStepPrime = gestationCostStepSize;
+			if (r.nextFloat() > 0.5) {
+				gcStepPrime = matingPartner.gestationCostStepSize;
+			}
+			gcStepPrime *= Math.exp(0.001*r.nextGaussian() + 0.001*r.nextGaussian());
+			if (gcStepPrime < 0.01) gcStepPrime = 0.01f;
+			
+			float gcPrime = gestationCost;
+			if (r.nextFloat() > 0.5) {
+				gcPrime = matingPartner.gestationCost;
+			}
+			
+			gcPrime += gcStepPrime*r.nextGaussian();
+			if(gcPrime < 1) {
+				gcPrime = 1;
+			}
+			
+			newActor.gestationCost = gcPrime;
+			newActor.gestationCostStepSize = gcStepPrime;
+			
+			
+			damageEntity((int)gestationCost*4);
+			newActor.setDurability((int)gestationCost);
+			
+			return new Egg(properties, new Point(), r, newActor, (int)gestationCost);
 		} else {
 			return null;
 		}
@@ -437,9 +645,9 @@ public class Actor extends Entity {
 
 	public int getToolLevel() {
 		if (equippedTool != null) { 
-			return equippedTool.getToolLevel();
+			return (int)Math.round(equippedTool.getToolLevel()*size);
 		} else {
-			return 10;
+			return (int)Math.round(25*size);
 		}
 	}
 	

@@ -28,6 +28,8 @@ public class Genome {
 	private float nodeMutationProb;
 	private float nodeMutationStepSize;
 	
+	public String speciesName;
+	
 		
 	public Genome(Counter counter) {
 		super();
@@ -38,9 +40,9 @@ public class Genome {
 		numInputs = 0;
 		numOutputs = 0;
 		
-		connectionMutationProb = 0.05f;
+		connectionMutationProb = 1f;
 		connectionMutationStepSize = 0.1f;
-		nodeMutationProb = 0.03f;
+		nodeMutationProb = 0.05f;
 		nodeMutationStepSize = 0.1f;
 	}
 	
@@ -86,18 +88,11 @@ public class Genome {
 		int node2r = r.nextInt(genes.length);
 		NodeGene node2 = (NodeGene)genes[node2r];
 		
-		if (node1 == null || node2 == null) {
-			boolean a = true;
-		}
-		
-		while (connections.containsKey(counter.getInnovation(node1.getId(), node2.getId()))) {
+		while (connections.containsKey(counter.getInnovation(node1.getId(), node2.getId())) || (node1.getType() == TYPE.INPUT && node2.getType() == TYPE.INPUT) || (node1.getType() == TYPE.OUTPUT && node2.getType() == TYPE.OUTPUT)) {
 			node1r = r.nextInt(genes.length);
 			node1 = (NodeGene)genes[node1r];
 			node2r = r.nextInt(genes.length);
 			node2 = (NodeGene)genes[node2r];
-			if (node1 == null || node2 == null) {
-				boolean a = true;
-			}
 		}
 		
 		float stepSize = 0.1f;
@@ -106,27 +101,31 @@ public class Genome {
 		addNewConnection(newConnection);
 	}
 	
+	
+	
 	public void addNodeMutation(Random r) {
 		
 		Object[] genes = connections.values().toArray();
-		ConnectionGene oldCon = (ConnectionGene)genes[r.nextInt(genes.length)];
-
-		while (!oldCon.isExpressed()) {
-			oldCon = (ConnectionGene)genes[r.nextInt(genes.length)];
+		if (genes.length > 0) {
+			ConnectionGene oldCon = (ConnectionGene)genes[r.nextInt(genes.length)];
+	
+			while (!oldCon.isExpressed()) {
+				oldCon = (ConnectionGene)genes[r.nextInt(genes.length)];
+			}
+			
+			
+			NodeGene inNode = nodes.get(oldCon.getInNode());
+			NodeGene outNode = nodes.get(oldCon.getOutNode());
+			
+			oldCon.disable();
+			double newLevel = (inNode.getLevel() + outNode.getLevel()) / 2f;
+			int newGeneId = addNode(TYPE.HIDDEN, newLevel);
+			ConnectionGene newInCon = new ConnectionGene(inNode.getId(), newGeneId, 1f, 0.1f, true, -1);
+			ConnectionGene newOutCon = new ConnectionGene(newGeneId, outNode.getId(), oldCon.getWeight(), oldCon.getStepSize(), true, -1);
+			addNewConnection(newInCon);
+			addNewConnection(newOutCon);
 		}
-		
-		
-		NodeGene inNode = nodes.get(oldCon.getInNode());
-		NodeGene outNode = nodes.get(oldCon.getOutNode());
-		
-		oldCon.disable();
-		double newLevel = (inNode.getLevel() + outNode.getLevel()) / 2f;
-		int newGeneId = addNode(TYPE.HIDDEN, newLevel);
-		ConnectionGene newInCon = new ConnectionGene(inNode.getId(), newGeneId, 1f, 0.1f, true, -1);
-		ConnectionGene newOutCon = new ConnectionGene(newGeneId, outNode.getId(), oldCon.getWeight(), oldCon.getStepSize(), true, -1);
-		addNewConnection(newInCon);
-		addNewConnection(newOutCon);
-		
+			
 		
 	}
 	
@@ -192,11 +191,11 @@ public class Genome {
 			
 			if (conn.isExpressed()) {
 				if (conn.getWeight() >= 0.05) {
-					g.setStroke(new BasicStroke(Math.round(conn.getWeight())));
+					g.setStroke(new BasicStroke(1));
 					g.setColor(Color.green);
 					g.drawLine(x1, y1, x2, y2);
 				} else if (conn.getWeight() < -0.05) {
-					g.setStroke(new BasicStroke(Math.round(Math.abs(conn.getWeight()))));
+					g.setStroke(new BasicStroke(1));
 					g.setColor(Color.red);
 					g.drawLine(x1, y1, x2, y2);
 				}
@@ -260,8 +259,11 @@ public class Genome {
 			}
 			
 			if (otherGenome.connections.containsKey(conn.getInnovation())) {
-				newConn.setStepSize((newConn.getStepSize() + otherGenome.connections.get(conn.getInnovation()).getStepSize())/2f);
-				newConn.setWeight((newConn.getWeight() + otherGenome.connections.get(conn.getInnovation()).getWeight())/2f);
+				
+				if (r.nextFloat() > 0.5) {
+					newConn.setWeight(otherGenome.connections.get(conn.getInnovation()).getWeight());
+					newConn.setStepSize(otherGenome.connections.get(conn.getInnovation()).getStepSize());
+				}
 				if (!otherGenome.connections.get(conn.getInnovation()).isExpressed()) {
 					isDisabledInOneGenome = true;
 				}
@@ -293,19 +295,17 @@ public class Genome {
 				newConn.setWeight(weightPrime);
 				newConn.setStepSize(stepSizePrime);
 			}
-			
-			if (!notPresentInOtherGenome || r.nextFloat() < 0.5) {
-				if (!newGenome.nodes.containsKey(newConn.getInNode())) {
-					newGenome.addNode(nodes.get(newConn.getInNode()).getType(), nodes.get(newConn.getInNode()).getLevel(), newConn.getInNode());
-				}
-				
-				if (!newGenome.nodes.containsKey(newConn.getOutNode())) {
-					newGenome.addNode(nodes.get(newConn.getOutNode()).getType(), nodes.get(newConn.getOutNode()).getLevel(), newConn.getOutNode());
-				}
-				
-				newGenome.connections.put(newConn.getInnovation(), newConn);
-				
+
+			if (!newGenome.nodes.containsKey(newConn.getInNode())) {
+				newGenome.addNode(nodes.get(newConn.getInNode()).getType(), nodes.get(newConn.getInNode()).getLevel(), newConn.getInNode());
 			}
+			
+			if (!newGenome.nodes.containsKey(newConn.getOutNode())) {
+				newGenome.addNode(nodes.get(newConn.getOutNode()).getType(), nodes.get(newConn.getOutNode()).getLevel(), newConn.getOutNode());
+			}
+			
+			newGenome.connections.put(newConn.getInnovation(), newConn);
+
 			
 		}
 		
@@ -357,11 +357,12 @@ public class Genome {
 		// Mutate and crossover the connection mutation probability and step size.
 		float connectionStepSizePrime = (connectionMutationStepSize + otherGenome.connectionMutationStepSize) / 2f;
 		connectionStepSizePrime *= Math.exp(tauPrime*r.nextGaussian() + tau*r.nextGaussian());
-		if (connectionStepSizePrime < 0.01) connectionStepSizePrime = 0.01f;
+		if (connectionStepSizePrime < 0.001) connectionStepSizePrime = 0.001f;
 		
 		float connectionMutationProbPrime = (connectionMutationProb + otherGenome.connectionMutationProb) / 2f;
 		connectionMutationProbPrime += connectionStepSizePrime*r.nextGaussian();
-		if(connectionMutationProbPrime < 0.05) connectionMutationProbPrime = 0.05f;
+		if(connectionMutationProbPrime < 0.01) connectionMutationProbPrime = 0.01f;
+		if(connectionMutationProbPrime > 0.1) connectionMutationProbPrime = 0.1f;
 		
 		newGenome.connectionMutationStepSize = connectionStepSizePrime;
 		newGenome.connectionMutationProb = connectionMutationProbPrime;
@@ -370,11 +371,12 @@ public class Genome {
 		// Mutate and crossover the node mutation probability and step size.
 		float nodeStepSizePrime = (nodeMutationStepSize + otherGenome.nodeMutationStepSize) / 2f;
 		nodeStepSizePrime *= Math.exp(tauPrime*r.nextGaussian() + tau*r.nextGaussian());
-		if (nodeStepSizePrime < 0.01) nodeStepSizePrime = 0.01f;
+		if (nodeStepSizePrime < 0.001) nodeStepSizePrime = 0.001f;
 		
 		float nodeMutationProbPrime = (nodeMutationProb + otherGenome.nodeMutationProb) / 2f;
 		nodeMutationProbPrime += nodeStepSizePrime*r.nextGaussian();
-		if(nodeMutationProbPrime < 0.03) nodeMutationProbPrime = 0.03f;
+		if(nodeMutationProbPrime < 0.01) nodeMutationProbPrime = 0.01f;
+		if(nodeMutationProbPrime > 0.1) nodeMutationProbPrime = 0.1f;
 		
 		newGenome.nodeMutationStepSize = nodeStepSizePrime;
 		newGenome.nodeMutationProb = nodeMutationProbPrime;
@@ -401,7 +403,7 @@ public class Genome {
 	public float[] feedForward(float[] inputs) {
 		assert inputs.length == numInputs;
 		float[] outputs = new float[numOutputs];
-		for (int timeStep=0; timeStep<10; timeStep++) {
+		for (int timeStep=0; timeStep<5; timeStep++) {
 			for (ConnectionGene conn : connections.values()) {
 				if (conn.isExpressed()) {
 					NodeGene inNode = nodes.get(conn.getInNode());
@@ -430,7 +432,7 @@ public class Genome {
 	public float calculateGeneticDistance(Genome otherGenome) {
 		float distance = 0;
 		float conjointDisjointCoeff = 2;
-		float weightCoeff = 1;
+		float weightCoeff = 1f;
 		int numberOfExcessAndDisjointGenes = 0;
 		int genesInCommon = 0;
 		float weightDifference = 0;

@@ -40,18 +40,9 @@ public class EntityFactory {
 	 */
 	public Entity selectEntity(float generatedNumber, Counter counter, Random r) {
 		
-		if (generatedNumber <= wheatGen) {
-			return new Wheat(properties, new Point(0,0), r);
-		} else {
-			generatedNumber -= wheatGen;
-			if (generatedNumber <= actorGen) {
-				return new Actor(properties, new Point(0,0), counter, null, r);
-			} else {
-				generatedNumber -= actorGen;
-				if (generatedNumber <= treeGen) {
-					return new Tree(properties, new Point(0,0), r);
-				}
-			}
+
+		if (generatedNumber <= actorGen) {
+			return new Actor(properties, new Point(0,0), counter, null, r, null);
 		}
 		
 		
@@ -64,9 +55,19 @@ public class EntityFactory {
 	 * @param r to be passed to the created entity. This function does not directly call the Random class.
 	 * @return the generated entity or null if no threshold has been reached.
 	 */
-	public Entity selectEnvironmentEntity(float generatedNumber, Random r) {
+	public Entity selectEnvironmentEntity(float generatedNumber, Random r, boolean resources) {
 		if (generatedNumber <= waterGenThreshold) {
 			return new Water(properties, new Point(0,0), r);
+		} else if (resources) {
+			generatedNumber -= waterGenThreshold;
+			if (generatedNumber <= wheatGen) {
+				return new Wheat(properties, new Point(0,0), r);
+			} else {
+				generatedNumber -= wheatGen;
+				if (generatedNumber <= treeGen) {
+					return new Tree(properties, new Point(0,0), r);
+				}
+			}
 		}
 		
 		return null;

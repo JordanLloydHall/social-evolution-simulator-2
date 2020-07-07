@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/javaml-0.1.7/javaml-0.1.7.jar"/>
 	<classpathentry kind="lib" path="lib/javaml-0.1.7/lib/ajt-2.9.jar"/>
 	<classpathentry kind="lib" path="lib/javaml-0.1.7/lib/commons-math-1.2.jar"/>
 	<classpathentry kind="lib" path="lib/javaml-0.1.7/lib/Jama-1.0.2.jar"/>
 	<classpathentry kind="lib" path="lib/javaml-0.1.7/lib/libsvm.jar"/>
 	<classpathentry kind="lib" path="lib/javaml-0.1.7/lib/weka.jar"/>
-	<classpathentry kind="lib" path="SocialEvoSim.jar"/>
+	<classpathentry kind="lib" path="/home/jordan/Programming/SocialEvoSim2/Worker/lib/jMonkeyEngine/jMonkeyEngine3.jar"/>
+	<classpathentry kind="lib" path="/home/jordan/Programming/SocialEvoSim2/Worker/lib/jMonkeyEngine/lib/jme3-testdata.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -13,7 +13,7 @@ public abstract class Entity {
 	protected int durability;
 	protected int maxDurability = 1;
 	protected Properties properties;
-	protected boolean destroyed;
+	public boolean destroyed;
 	
 	protected boolean portability;
 	protected float chanceOfGeneration;
