@@ -54,7 +54,7 @@ public class Counter {
 	public synchronized Genome speciate(Genome newGenome, Genome oldGenome) {
 		
 		
-		if (oldGenome != null && newGenome.calculateGeneticDistance(oldGenome) <= 50) {
+		if (oldGenome != null && newGenome.calculateGeneticDistance(oldGenome) <= 0.1) {
 			newGenome.speciesName = oldGenome.speciesName;
 			return oldGenome;
 		}
@@ -69,10 +69,10 @@ public class Counter {
 			}
 		}
 		
-		if (closestDist > 200) {
+		if (closestDist > 0.1) {
 			speciesTree.add(new Genome[] {newGenome, oldGenome});
-			newGenome.speciesName = firstNames[r.nextInt(firstNames.length)] + " " + firstNames[r.nextInt(firstNames.length)] + " " + lastNames[r.nextInt(lastNames.length)];
-
+//			newGenome.speciesName = firstNames[r.nextInt(firstNames.length)] + " " + firstNames[r.nextInt(firstNames.length)] + " " + lastNames[r.nextInt(lastNames.length)];
+			newGenome.speciesName = numOfSpecies;
 			numOfSpecies += 1;
 			drawTree();
 			
@@ -141,7 +141,7 @@ public class Counter {
 			for (int column=0; column<level.size(); column++) {
 				g.drawRect(startX, startY, eachWidth, eachHeight);
 				
-				g.drawString(level.get(column).speciesName, startX + 10, startY + (int)(eachHeight/2f));
+				g.drawString(String.valueOf(level.get(column).speciesName), startX + 10, startY + (int)(eachHeight/2f));
 				
 				if (row > 0) {
 					LinkedList<Genome> lastLevel = levels.get(row-1);

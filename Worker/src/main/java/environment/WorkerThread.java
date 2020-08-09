@@ -3,9 +3,11 @@ package main.java.environment;
 
 import java.awt.Point;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 import main.java.entity.Entity;
@@ -28,7 +30,14 @@ public class WorkerThread extends Thread {
 	public int treesAdded = 0;
 	public int wheatAdded = 0;
 	
+	public long timeSpentEntities = 0;
+	public long timeSpentWheat = 0;
+	public long timeSpentTrees = 0;
+	
 	private int timestep;
+	
+	private float wheatDuplication;
+	private float treeDuplication;
 	
 	
 	public WorkerThread(LinkedBlockingQueue<Entity> entityStepQueue, LinkedBlockingQueue<int[]> wheatQueue, LinkedBlockingQueue<int[]> treeQueue, Interpreter interpreter, Environment env, Properties properties, Random r) {
@@ -42,6 +51,7 @@ public class WorkerThread extends Thread {
 		environmentRunner = false;
 		done = false;
 		timestep = 0;
+		wheatDuplication = Float.parseFloat(properties.getProperty("WHEAT_DUPLICATION"));
 	}
 	
 	@Override
@@ -49,43 +59,57 @@ public class WorkerThread extends Thread {
 		Entity currentEntity;
 		int[] currentPoint;
 		
+		long t = 0;
+		
+		Date d = new Date();
+		
 		while (!done) {
 			try {
+				t = new Date().getTime();
 				if (environmentRunner && env.ready) {
 					
 					env.step(timestep);
 					timestep += 1;
-				
-				} else if (!entityStepQueue.isEmpty()) {
-					currentEntity = entityStepQueue.poll(50, TimeUnit.MILLISECONDS);
-					if (currentEntity != null && currentEntity.getIsVisible()) {
-						currentEntity.onStep(interpreter, env);
-					}
-				} else if (!wheatQueue.isEmpty()) {
-					currentPoint = wheatQueue.poll(50, TimeUnit.MILLISECONDS);
+				} else if (env.wheatListLen > 0) {
+					currentPoint = env.wheatList.poll(20, TimeUnit.MILLISECONDS);
 					if (currentPoint != null) {
-						if (env.getEntity(currentPoint[0], currentPoint[1]) == null) { 
-							if (r.nextFloat() < Float.parseFloat(properties.getProperty("WHEAT_DUPLICATION"))) {
-								env.insertEntity(new Wheat(properties, new Point(currentPoint[0], currentPoint[1]), r), currentPoint[0], currentPoint[1]);
-								wheatAdded += 1;
-								env.wheatList.remove(currentPoint);
-							}
+						currentEntity = env.getEntity(currentPoint[0], currentPoint[1]);
+						if (currentEntity == null) {
+							env.insertEntity(new Wheat(properties, new Point(currentPoint[0], currentPoint[1]), r), currentPoint[0], currentPoint[1]);
+							wheatAdded += 1;
+						} else if (!(currentEntity instanceof Wheat)) {
+							env.wheatList.add(currentPoint);
 						}
 					}
+					env.wheatListLen -= 1;
+					timeSpentWheat += d.getTime() - t;
+				} else if (env.treeListLen > 0) {
+					currentPoint = env.treeList.poll(20, TimeUnit.MILLISECONDS);
+					if (currentPoint != null) {
+						currentEntity = env.getEntity(currentPoint[0], currentPoint[1]);
+						if (currentEntity == null) {
+							env.insertEntity(new Tree(properties, new Point(currentPoint[0], currentPoint[1]), r), currentPoint[0], currentPoint[1]);
+							treesAdded += 1;
+						} else if (!(currentEntity instanceof Tree)) {
+							env.treeList.add(currentPoint);
+						}
+					}
+					env.treeListLen -= 1;
+					timeSpentTrees += d.getTime() - t;
 				} else {
-					currentPoint = treeQueue.poll(50, TimeUnit.MILLISECONDS);
-					if (currentPoint != null) {
-						if (env.getEntity(currentPoint[0], currentPoint[1]) == null) {
-							if (r.nextFloat() < Float.parseFloat(properties.getProperty("TREE_DUPLICATION"))) {
-								env.insertEntity(new Tree(properties, new Point(currentPoint[0], currentPoint[1]), r), currentPoint[0], currentPoint[1]);
-								treesAdded += 1;
-								env.treeList.remove(currentPoint);
-							}	
-						}
+					currentEntity = entityStepQueue.poll(20, TimeUnit.MILLISECONDS);
+					if (currentEntity != null) {
+						currentEntity.onStep(interpreter, env);
+						timeSpentEntities += d.getTime() - t;
 					}
+					
 				}
 			} catch (InterruptedException e) {
 				e.printStackTrace();
+			}
+			
+			if (env.finished) {
+				done = true;
 			}
 					
 		}

@@ -6,6 +6,7 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -28,7 +29,10 @@ public class Genome {
 	private float nodeMutationProb;
 	private float nodeMutationStepSize;
 	
-	public String speciesName;
+	private float connDeleteProb;
+	private float connDeleteStepSize;
+	
+	public int speciesName;
 	
 		
 	public Genome(Counter counter) {
@@ -40,10 +44,13 @@ public class Genome {
 		numInputs = 0;
 		numOutputs = 0;
 		
-		connectionMutationProb = 1f;
-		connectionMutationStepSize = 0.1f;
-		nodeMutationProb = 0.05f;
-		nodeMutationStepSize = 0.1f;
+		connectionMutationProb = 0.05f;
+		connectionMutationStepSize = 0.01f;
+		nodeMutationProb = 0.03f;
+		nodeMutationStepSize = 0.01f;
+		
+		connDeleteProb = 0.03f;
+		connDeleteStepSize = 0.01f;
 	}
 	
 	public int addNode(TYPE type, double level) {
@@ -101,7 +108,68 @@ public class Genome {
 		addNewConnection(newConnection);
 	}
 	
+	public void deleteFloatingNode(NodeGene oldNode) {
+		if (oldNode.getType() == TYPE.HIDDEN) {
+			nodes.remove(oldNode.getId());
+			
+			ArrayList<ConnectionGene> toRemove = new ArrayList<>();
+			
+			for (ConnectionGene conn : connections.values()) {
+				if (oldNode.getId() == conn.getInNode() || oldNode.getId() == conn.getOutNode()) {
+					toRemove.add(conn);
+				}
+			}
+			
+			for (ConnectionGene conn : toRemove) {
+				deleteFloatingConn(conn);
+			}
+		}
+	}
 	
+	public void deleteFloatingConn(ConnectionGene oldConn) {
+		connections.remove(oldConn.getInnovation());
+		
+		NodeGene inNode = nodes.get(oldConn.getInNode());
+		boolean hasOutputs = false;
+		
+		if (inNode != null) {
+			for (ConnectionGene conn : connections.values()) {
+				if (conn.getOutNode() == inNode.getId()) {
+					hasOutputs = true;
+				}
+			}
+			
+			if (!hasOutputs) {
+				deleteFloatingNode(inNode);
+			}
+		}
+		
+		NodeGene outNode = nodes.get(oldConn.getOutNode());
+		boolean hasInputs = false;
+		
+		if (outNode != null) {
+			for (ConnectionGene conn : connections.values()) {
+				if (conn.getInNode() == outNode.getId()) {
+					hasInputs = true;
+				}
+			}
+			
+			if (!hasInputs) {
+				deleteFloatingNode(outNode);
+			}
+		}
+	}
+	
+	public void deleteConnMutation(Random r) {
+		Object[] conns = connections.values().toArray();
+		if (conns.length > 0) {
+			ConnectionGene oldCon = (ConnectionGene)conns[r.nextInt(conns.length)];
+			
+			deleteFloatingConn(oldCon);
+			
+		}
+		
+	}
 	
 	public void addNodeMutation(Random r) {
 		
@@ -355,31 +423,54 @@ public class Genome {
 		}
 
 		// Mutate and crossover the connection mutation probability and step size.
-		float connectionStepSizePrime = (connectionMutationStepSize + otherGenome.connectionMutationStepSize) / 2f;
-		connectionStepSizePrime *= Math.exp(tauPrime*r.nextGaussian() + tau*r.nextGaussian());
-		if (connectionStepSizePrime < 0.001) connectionStepSizePrime = 0.001f;
+		float connectionStepSizePrime = connectionMutationStepSize;
+		if (r.nextFloat() > 0.5) connectionStepSizePrime = otherGenome.connectionMutationStepSize;
 		
-		float connectionMutationProbPrime = (connectionMutationProb + otherGenome.connectionMutationProb) / 2f;
+		connectionStepSizePrime *= Math.exp(tauPrime*r.nextGaussian() + tau*r.nextGaussian());
+		if (connectionStepSizePrime < 0.005) connectionStepSizePrime = 0.005f;
+		
+		float connectionMutationProbPrime = connectionMutationProb;
+		if (r.nextFloat() > 0.5) connectionMutationProbPrime = otherGenome.connectionMutationProb;
+		
 		connectionMutationProbPrime += connectionStepSizePrime*r.nextGaussian();
 		if(connectionMutationProbPrime < 0.01) connectionMutationProbPrime = 0.01f;
-		if(connectionMutationProbPrime > 0.1) connectionMutationProbPrime = 0.1f;
 		
 		newGenome.connectionMutationStepSize = connectionStepSizePrime;
 		newGenome.connectionMutationProb = connectionMutationProbPrime;
 		
 		
 		// Mutate and crossover the node mutation probability and step size.
-		float nodeStepSizePrime = (nodeMutationStepSize + otherGenome.nodeMutationStepSize) / 2f;
-		nodeStepSizePrime *= Math.exp(tauPrime*r.nextGaussian() + tau*r.nextGaussian());
-		if (nodeStepSizePrime < 0.001) nodeStepSizePrime = 0.001f;
+		float nodeStepSizePrime = nodeMutationStepSize;
+		if (r.nextFloat() > 0.5) nodeStepSizePrime = otherGenome.nodeMutationStepSize;
 		
-		float nodeMutationProbPrime = (nodeMutationProb + otherGenome.nodeMutationProb) / 2f;
+		nodeStepSizePrime *= Math.exp(tauPrime*r.nextGaussian() + tau*r.nextGaussian());
+		if (nodeStepSizePrime < 0.005) nodeStepSizePrime = 0.005f;
+		
+		float nodeMutationProbPrime = nodeMutationProb;
+		if (r.nextFloat() > 0.5) nodeMutationProbPrime = otherGenome.nodeMutationProb;
+			
 		nodeMutationProbPrime += nodeStepSizePrime*r.nextGaussian();
 		if(nodeMutationProbPrime < 0.01) nodeMutationProbPrime = 0.01f;
-		if(nodeMutationProbPrime > 0.1) nodeMutationProbPrime = 0.1f;
 		
 		newGenome.nodeMutationStepSize = nodeStepSizePrime;
 		newGenome.nodeMutationProb = nodeMutationProbPrime;
+		
+		
+		// Mutate and crossover the connection deletion probability and step size.
+		float connDeleteStepSizePrime = connDeleteStepSize;
+		if (r.nextFloat() > 0.5) connDeleteStepSizePrime = otherGenome.connDeleteStepSize;
+		
+		connDeleteStepSizePrime *= Math.exp(tauPrime*r.nextGaussian() + tau*r.nextGaussian());
+		if (connDeleteStepSizePrime < 0.005) connDeleteStepSizePrime = 0.005f;
+		
+		float connDeleteProbPrime = connDeleteProb;
+		if (r.nextFloat() > 0.5) connDeleteProbPrime = otherGenome.connDeleteProb;
+			
+		connDeleteProbPrime += connDeleteProbPrime*r.nextGaussian();
+		if(connDeleteProbPrime < 0.01) connDeleteProbPrime = 0.01f;
+		
+		newGenome.connDeleteProb = connDeleteProbPrime;
+		newGenome.connDeleteStepSize = connDeleteStepSizePrime;
 		
 		
 		if (r.nextDouble() < newGenome.nodeMutationProb) {
@@ -387,6 +478,9 @@ public class Genome {
 		}
 		if (r.nextDouble() < newGenome.connectionMutationProb) {
 			newGenome.addConnectionMutation(r);
+		}
+		if (r.nextDouble() < newGenome.connDeleteProb) {
+			newGenome.deleteConnMutation(r);
 		}
 		
 		return newGenome;
@@ -431,8 +525,8 @@ public class Genome {
 	
 	public float calculateGeneticDistance(Genome otherGenome) {
 		float distance = 0;
-		float conjointDisjointCoeff = 2;
-		float weightCoeff = 1f;
+		float conjointDisjointCoeff = 1;
+		float weightCoeff = 0f;
 		int numberOfExcessAndDisjointGenes = 0;
 		int genesInCommon = 0;
 		float weightDifference = 0;
@@ -448,7 +542,9 @@ public class Genome {
 		
 		numberOfExcessAndDisjointGenes = connections.size() - genesInCommon + otherGenome.connections.size() - genesInCommon;
 		
-		distance = conjointDisjointCoeff * numberOfExcessAndDisjointGenes + weightCoeff * averageWeightDifference;
+		float largestNumOfConns = (float)Math.max(getNumberOfConnections(), otherGenome.getNumberOfConnections());
+		
+		distance = ((conjointDisjointCoeff * numberOfExcessAndDisjointGenes)/largestNumOfConns) + weightCoeff * averageWeightDifference;
 		
 		return distance;
 	}

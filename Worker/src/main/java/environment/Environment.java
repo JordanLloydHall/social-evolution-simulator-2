@@ -38,6 +38,8 @@ public class Environment {
 	private ArrayList<Entity> entityList;
 	public LinkedBlockingQueue<int[]> wheatList;
 	public LinkedBlockingQueue<int[]> treeList;
+	public LinkedBlockingQueue<int[]> nextWheatList;
+	public LinkedBlockingQueue<int[]> nextTreeList;
 //	private ArrayList<Point> tideList;
 	private Interpreter interpreter;
 	private Counter counter;
@@ -54,6 +56,12 @@ public class Environment {
 	public boolean ready = false;
 	public boolean finished = false;
 	
+	public float averageTime;
+	public float[] times;
+	
+	public int wheatListLen = 0;
+	public int treeListLen = 0;
+	
 	LinkedBlockingQueue<Entity> entityStepProcessingQueue;
 	
 	LinkedBlockingQueue<int[]> wheatProcessingQueue;
@@ -61,8 +69,17 @@ public class Environment {
 	
 	WorkerThread[] entityProcessors;
 	
+	public boolean stepping = false;
+	
+	private float wheatDuplication;
+	private float treeDuplication;
+	
 
 	public Environment(Properties properties, Interpreter interpreter, Random r) {
+		wheatDuplication = Float.parseFloat(properties.getProperty("WHEAT_DUPLICATION"));
+		treeDuplication = Float.parseFloat(properties.getProperty("TREE_DUPLICATION"));
+		
+		times = new float[100];
 		
 		try {
             File file = new File("./data.csv");
@@ -83,15 +100,14 @@ public class Environment {
 		worldHeight = Integer.parseInt(properties.getProperty("WORLD_HEIGHT"));
 		counter = new Counter(r);
 		
+		
+		
 		this.r = r;
 		
 		entityStepProcessingQueue = new LinkedBlockingQueue<Entity>();
-		wheatProcessingQueue = new LinkedBlockingQueue<>();
-		treeProcessingQueue = new LinkedBlockingQueue<>();
 		
 		wheatList = new LinkedBlockingQueue<>();
 		treeList = new LinkedBlockingQueue<>();
-//		tideList = new ArrayList<Point>();
 		
 		entityProcessors = new WorkerThread[4];
 		
@@ -262,28 +278,17 @@ public class Environment {
 		float sexual = 0;
 		float asexual = 0;
 		
-//		if ((time+1) % 50000 == 0) {
-//			for (Point p : tideList) {
-//				if (tideUp) {
-//					removeEntity(p.x,p.y);
-//				} else {
-//					insertEntity(new Water(properties, new Point(p.x,p.y), r), p.x, p.y);
-//				}
-//			}
-//			
-//			tideUp = !tideUp;
-//		}
+		String s = "";
 		
+		long t3 = new Date().getTime();
 		entityStepProcessingQueue.addAll(entityList);
-//		ArrayList<int[]> wheatListClone = (ArrayList<int[]>) wheatList.clone();
-//		wheatList.clear();
-		wheatProcessingQueue.addAll(wheatList);
-//		ArrayList<int[]> treeListClone = (ArrayList<int[]>) treeList.clone();
-//		treeList.clear();
-		treeProcessingQueue.addAll(treeList);
-//		treeList.clear();
 		
+		wheatListLen = (int)(wheatList.size() * wheatDuplication);
+		treeListLen = (int)(treeList.size() * treeDuplication);
 		
+		s += "Adding items to lists took " + Math.round((new Date().getTime() - t3)*100f/1000f)/100f + "\n";
+		
+		long t4 = new Date().getTime();
 
 		Actor actor;
 		for (Entity newEntity : entityList) {
@@ -307,24 +312,53 @@ public class Environment {
 			}
 		}
 		
-		while (!entityStepProcessingQueue.isEmpty() || !wheatProcessingQueue.isEmpty() || !treeProcessingQueue.isEmpty()) {
+		while (!entityStepProcessingQueue.isEmpty() || wheatListLen > 0 || treeListLen > 0) {
 		}
+		
+		s += "Entity steps took " + Math.round((new Date().getTime() - t4)*100f/1000f)/100f + "\n";
+		
+		long timeEntities = 0;
+		long timeWheat = 0;
+		long timeTrees = 0;
 		
 		for (int i=0; i<entityProcessors.length; i++) {
 			numWheat += entityProcessors[i].wheatAdded;
 			numTrees += entityProcessors[i].treesAdded;
+			timeEntities += entityProcessors[i].timeSpentEntities;
+			timeWheat += entityProcessors[i].timeSpentWheat;
+			timeTrees += entityProcessors[i].timeSpentTrees;
+			entityProcessors[i].timeSpentTrees = 0;
+			entityProcessors[i].timeSpentWheat = 0;
+			entityProcessors[i].timeSpentEntities = 0;
 			entityProcessors[i].wheatAdded = 0;
 			entityProcessors[i].treesAdded = 0;
 		}
-	
-		interpreter.interpretStep(this);
 		
-		System.out.println("Timestep " + time + " completed. Time taken: " + Math.round((new Date().getTime() - t)*100f/1000f)/100f + " " + numActors);
+		long total = timeEntities + timeWheat + timeTrees;
+		
+		s += "Entities took " + Math.round((timeEntities/(float)total)*1000f)/1000f + "\n";
+		s += "Wheat took " + Math.round((timeWheat/(float)total)*1000f)/1000f + "\n";
+		s += "Trees took " + Math.round((timeTrees/(float)total)*1000f)/1000f + "\n";
+		
+		s += "Trees added: " + (int)(treeList.size() * treeDuplication) + "\n";
+		s += "Wheat added: " + (int)(wheatList.size() * wheatDuplication) + "\n";
+		
+		long t2 = new Date().getTime();
+		interpreter.interpretStep(this);
+		s += "Interpreter step took " + Math.round((new Date().getTime() - t2)*100f/1000f)/100f + "\n";
+
+
+//		averageTime = times.
+		
+		s += "Timestep " + time + " completed. Time taken: " + Math.round((new Date().getTime() - t)*100f/1000f)/100f + " " + numActors + "\n";
 //		System.out.println(wheatList.size());
 		if (numActors == 0 || finished) {
 			System.out.print(numActors);
 			finish();
 		}
+		
+		s += "\n\n";
+
 		
 		try {
             File file = new File("./data.csv");
@@ -338,6 +372,12 @@ public class Environment {
         } catch(IOException e) {
         	e.printStackTrace();
         }
+		
+		if (stepping) {
+			ready = false;
+		}
+		
+		System.out.println(s);
 				
 		return false;
 	}
@@ -369,8 +409,6 @@ public class Environment {
 	
 	public void finish() {
 		finished = true;
-		for (int i=0; i<entityProcessors.length; i++) {
-			entityProcessors[i].done = true;
-		}
+		
 	}
 }

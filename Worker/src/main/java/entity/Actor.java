@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Properties;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 import main.java.environment.Environment;
 import main.java.interpreter.Interpreter;
@@ -96,7 +97,7 @@ public class Actor extends Entity {
 		age = 0;
 		
 		viewRadius = r.nextFloat()*10+1;
-		viewRadiusStepSize = 0.1f;
+		viewRadiusStepSize = 1f;
 		fov = 2f*(float)Math.PI*r.nextFloat();
 		if(fov < Math.PI/2f) {
 			fov = (float) (Math.PI/2f);
@@ -104,13 +105,13 @@ public class Actor extends Entity {
 		fovStepSize = 0.1f;
 		
 		size = r.nextFloat()*2+1;
-		sizeStepSize = 0.1f;
+		sizeStepSize = 0.5f;
 		
 		speed = r.nextFloat()*2+1;
-		speedStepSize = 0.1f;
+		speedStepSize = 0.5f;
 		
-		gestationCost = r.nextInt(20)+40;
-		gestationCostStepSize = 0.1f;
+		gestationCost = r.nextInt(20)+50;
+		gestationCostStepSize = 1f;
 		
 		
 		rayCastCount = Integer.parseInt(properties.getProperty("ACTOR_VIEW_CASTS"));
@@ -136,7 +137,8 @@ public class Actor extends Entity {
 		durability = Integer.parseInt(properties.getProperty("ACTOR_DURABILITY"));
 		maxDurability = durability;
 		
-		currentDirection = (int)(r.nextFloat()*4);
+		currentDirection = r.nextInt(4);
+//		currentDirection = 3;
 		this.counter = counter;
 		
 		if (inheritedGenome != null) {
@@ -154,13 +156,9 @@ public class Actor extends Entity {
 			}
 			
 //			for (int i=0; i<totalNetworkOutputs; i++) {
-//				if (i != 4) {
-//					for (int j=0; j<totalNetworkInputs; j++) {
-//						if ((j < 2 || j>= 2 + numberOfDifferentEntities - 2) && j<numberOfDifferentEntities + dimensionsPerRaycast) {
-//							ConnectionGene newConn = new ConnectionGene(j, i+totalNetworkInputs, (float) r.nextGaussian(), 0.1f, true, -1);
-//							genome.addNewConnection(newConn);
-//						}
-//					}
+//				for (int j=0; j<totalNetworkInputs; j++) {
+//					ConnectionGene newConn = new ConnectionGene(j, i+totalNetworkInputs, (float) r.nextGaussian(), 0.1f, true, -1);
+//					genome.addNewConnection(newConn);
 //				}
 //			}
 			
@@ -210,6 +208,9 @@ public class Actor extends Entity {
 //				ConnectionGene newConn = new ConnectionGene(inNode, outNode, (float) r.nextGaussian(), 1f, true, -1);
 //				genome.addNewConnection(newConn);
 //			}
+			
+			
+			
 			if (Math.random() < 0.0005) {genome.visualize(new Random(), "newActor");}
 			
 		}
@@ -323,7 +324,7 @@ public class Actor extends Entity {
 		float actionOutputs[] = Arrays.copyOfRange(outputs, 0, 6);
 		float softmaxOutputs[] = Genome.calculateSoftmax(actionOutputs);
 //		System.out.println(Arrays.toString(softmaxOutputs));
-		float rand = r.nextFloat();
+		float rand = ThreadLocalRandom.current().nextFloat();
 		int randomWeightedIndex = 0;
 		for (int i=0; i<softmaxOutputs.length; i++) {
 			if (rand < softmaxOutputs[i]) {
@@ -349,7 +350,7 @@ public class Actor extends Entity {
 			float speedFound = (int)speed;
 			boolean positionFound = false;
 			while (speedFound >= 1 && !positionFound) {
-				int[] newPos = new int[] {(int) Math.round(getPos()[0] + speedFound*Math.cos(currentDirection*Math.PI/2)),(int) Math.round(getPos()[1] + speedFound*Math.sin(currentDirection*Math.PI/2))};
+				int[] newPos = new int[] {(int) Math.round(getPos()[0] + speedFound*Math.cos(currentDirection*Math.PI/2f)),(int) Math.round(getPos()[1] + speedFound*Math.sin(currentDirection*Math.PI/2f))};
 				if (env.getEntity(newPos[0], newPos[1]) == null) {
 					interpreter.addToMoveQueue(getPos(), newPos);
 					damageEntity((int)Math.round(Math.pow(speedFound,2)));
@@ -390,7 +391,7 @@ public class Actor extends Entity {
 		} else if (randomWeightedIndex == 5 && durability > 4*gestationCost) {
 			matingPartner = null;
 			for (Entity entity1 : entityRayCasts) {
-				if (entity1 != null && entity1 instanceof Actor && genome.calculateGeneticDistance(((Actor)entity1).genome) <= 50) {
+				if (entity1 != null && entity1 instanceof Actor && genome.calculateGeneticDistance(((Actor)entity1).genome) <= 0.1) {
 					matingPartner = (Actor)entity1;
 					break;
 				}
@@ -413,7 +414,7 @@ public class Actor extends Entity {
 			}
 		}
 		
-		damageEntity((int)Math.round(Math.pow(size,2) + Math.max(0,(genome.getNumberOfConnections()-400f)/100f)));
+		damageEntity((int)Math.round(Math.pow(size,2) + Math.floor(Math.max(0,(genome.getNumberOfConnections()-400f)/100f))));
 		
 		age += 1;
 		if (age >= maxAge) {
@@ -592,8 +593,8 @@ public class Actor extends Entity {
 			}
 			
 			gcPrime += gcStepPrime*r.nextGaussian();
-			if(gcPrime < 1) {
-				gcPrime = 1;
+			if(gcPrime < 50) {
+				gcPrime = 50;
 			}
 			
 			newActor.gestationCost = gcPrime;

@@ -1,6 +1,7 @@
 package main.java.worker;
 
 import java.awt.Point;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -9,6 +10,11 @@ import java.util.Random;
 
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.AppState;
+import com.jme3.asset.AssetKey;
+import com.jme3.asset.AssetLocator;
+import com.jme3.asset.plugins.FileLocator;
+import com.jme3.bounding.BoundingBox;
+import com.jme3.export.binary.BinaryExporter;
 import com.jme3.input.KeyInput;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.KeyTrigger;
@@ -21,12 +27,14 @@ import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
+import com.jme3.scene.SceneGraphVisitorAdapter;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.Spatial.CullHint;
 import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Quad;
 import com.jme3.util.SkyFactory;
 import com.jme3.water.SimpleWaterProcessor;
+import com.jme3.renderer.Camera;
 
 import jme3tools.optimize.GeometryBatchFactory;
 import main.java.entity.Actor;
@@ -59,7 +67,7 @@ public class Main extends SimpleApplication {
     ArrayList<Resource> resourceList;
     ArrayList<Actor> actorList;
     
-    HashMap<Entity,Geometry> entityMap;
+    HashMap<Entity,Spatial> entityMap;
     ArrayList<Entity> toRemove;
     
     Environment env;
@@ -76,15 +84,15 @@ public class Main extends SimpleApplication {
     Material baseMeatMat;
     Material baseEntityMat;
 
-    Geometry baseEntityGeom;
-    Geometry baseActorGeom;
+    Spatial baseEntityGeom;
+    Spatial baseActorModel;
     
     int chunkSize;
     int renderDistance;
     
     boolean paused = false;
     
-    
+    boolean stepping = false;
     
     public static void main(String[] args) {
         Main app = new Main();
@@ -99,6 +107,21 @@ public class Main extends SimpleApplication {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+//		String userHome = System.getProperty("user.home");
+//	    assetManager.registerLocator(userHome, FileLocator.class);
+//	    
+//	    baseActorModel = assetManager.loadModel("Models/OrangeBOT.obj");
+//		
+//		File file = new File(userHome+"/Models/"+"OrangeBOT.j3o");
+//		
+//		BinaryExporter exp = BinaryExporter.getInstance();
+//		
+//		
+//		try {
+//	        exp.save(baseActorModel, file);
+//	    } catch (IOException ex) {
+//	        System.out.println(file.getAbsolutePath());
+//	    }
 		
 		chunkSize = Integer.parseInt(props.getProperty("CHUNK_SIZE"));
 		renderDistance = Integer.parseInt(props.getProperty("RENDER_DISTANCE"));
@@ -119,7 +142,7 @@ public class Main extends SimpleApplication {
         rootNode.addLight(sun);
         
         AmbientLight al = new AmbientLight();
-        al.setColor(ColorRGBA.White.mult(0.2f));
+        al.setColor(ColorRGBA.White.mult(0.05f));
         rootNode.addLight(al);
         
         Spatial sky = SkyFactory.createSky(getAssetManager(), "Textures/Sky/Bright/BrightSky.dds", SkyFactory.EnvMapType.CubeMap);
@@ -135,7 +158,7 @@ public class Main extends SimpleApplication {
         waterProcessor.setWaveSpeed(0.05f);
         waterProcessor.setDistortionScale(0.05f);
 
-        waterPlane=(Spatial)  assetManager.loadModel("Models/WaterTest/WaterTest.mesh.xml");
+        waterPlane = (Spatial)assetManager.loadModel("Models/WaterTest/WaterTest.mesh.xml");
         waterPlane.setMaterial(waterProcessor.getMaterial());
         waterPlane.setLocalScale(env.getWorldWidth()/2);
         waterPlane.setLocalTranslation(0, -0.5f, 0);
@@ -199,11 +222,13 @@ public class Main extends SimpleApplication {
         }
         
         baseActorMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+////        baseActorMat.setTexture("DiffuseMap",
+////                assetManager.loadTexture("Textures/Actor/octopusBody.jpg"));
         baseActorMat.setBoolean("UseMaterialColors",true);
-        baseActorMat.setColor("Diffuse",ColorRGBA.Red);
-        baseActorMat.setColor("Specular",ColorRGBA.Red);
-        baseActorMat.setColor("Ambient",ColorRGBA.Red);
-        baseActorMat.setFloat("Shininess", 32f);
+        baseActorMat.setColor("Diffuse",ColorRGBA.White);
+        baseActorMat.setColor("Specular",ColorRGBA.White);
+        baseActorMat.setColor("Ambient",ColorRGBA.White);
+        baseActorMat.setFloat("Shininess", 8f);
         
         baseWheatMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
         baseWheatMat.setBoolean("UseMaterialColors",true);
@@ -264,10 +289,12 @@ public class Main extends SimpleApplication {
         
         inputManager.addMapping("Toggle Sim", new KeyTrigger(KeyInput.KEY_P));
         inputManager.addMapping("Toggle Renderer", new KeyTrigger(KeyInput.KEY_L));
+        inputManager.addMapping("Toggle Stepping", new KeyTrigger(KeyInput.KEY_K));
         
-        inputManager.addListener(actionListener,new String[]{"Toggle Sim","Toggle Renderer"});
-        
-//        geo.setMaterial(mat);
+        inputManager.addListener(actionListener,new String[]{"Toggle Sim","Toggle Renderer","Toggle Stepping"});
+//        assetManager.
+//        System.out.println(getAssetManager().toString());
+//        baseActorGeom = loadedNode;//getAssetManager().loadModel("Models/Doughnut.obj");
 	}
 	
 	@Override
@@ -279,13 +306,18 @@ public class Main extends SimpleApplication {
 			Node chunk;
 			Vector3f camPos = cam.getLocation();
 			Entity e;
-			Geometry geom;
+			Spatial geom;
 			
 			for (int xChunk=0; xChunk<entityChunks.length; xChunk++) {
 				for (int yChunk=0; yChunk<entityChunks[xChunk].length; yChunk++) {
 					chunk = entityChunks[xChunk][yChunk];
 					
 					float dist = camPos.distance(chunk.getUserData("center"));
+//					boolean offScreen = false;
+//					Vector3f chunkScreenPos = cam.getScreenCoordinates(chunk.getUserData("center"));
+//					if (chunkScreenPos.x < 0 || chunkScreenPos.y < 0 || chunkScreenPos.z < 0) {
+//						offScreen = true;
+//					}
 					
 					if (dist < renderDistance) {
 						if (!(boolean) chunk.getUserData("visible")) {
@@ -302,20 +334,63 @@ public class Main extends SimpleApplication {
 										if (entityMap.containsKey(e)) {
 											geom = entityMap.get(e);
 											geom.setUserData("updated", true);
-											if (!((int)geom.getUserData("x") == x && (int)geom.getUserData("y") == y)) {
-												geom.setUserData("x", x);
-												geom.setUserData("y", y);
-												geom.setLocalTranslation(x - env.getWorldWidth()/2, geom.getUserData("z"), y - env.getWorldHeight()/2);
-											}
-										} else {
-	//										
-											geom = getEntityGeometry(e);
+//											if (!((int)geom.getUserData("x") == x && (int)geom.getUserData("y") == y)) {
+//												geom.setUserData("x", x);
+//												geom.setUserData("y", y);
+//												geom.setLocalTranslation(x - env.getWorldWidth()/2, geom.getUserData("z"), y - env.getWorldHeight()/2);
+//												
+////												geom.setLocalRotation(new Quaternion().fromAngleAxis(1.5f , new Vector3f(0, 1, 0)));
+//											}
 											geom.setUserData("x", x);
 											geom.setUserData("y", y);
 											geom.setUserData("updated", true);
+											
+//											geom.setLocalTranslation(x - env.getWorldWidth()/2, geom.getUserData("z"), y - env.getWorldHeight()/2);
+										} else {
+	//										
+											geom = getEntityGeometry(e);
+//											geom.setUserData("x", x);
+//											geom.setUserData("y", y);
+//											geom.setUserData("updated", true);
 											entityMap.put(e, geom);
+//											geom.setLocalTranslation(x - env.getWorldWidth()/2, geom.getUserData("z"), y - env.getWorldHeight()/2);
+//											if (e instanceof Actor) {
+//												geom.setLocalRotation(new Quaternion().fromAngleAxis(FastMath.HALF_PI*(((Actor)e).getDirection()+1), new Vector3f(0, 1, 0)));
+//											}
+											
+											geom.setUserData("x", x);
+											geom.setUserData("y", y);
+											geom.setUserData("updated", true);
 											geom.setLocalTranslation(x - env.getWorldWidth()/2, geom.getUserData("z"), y - env.getWorldHeight()/2);
+											
+											if (e instanceof Actor) {
+												geom.setLocalScale(FastMath.sqrt(((Actor)e).size)*0.2f);
+											}
+											
 											chunk.attachChild(geom);
+										}
+										
+										
+										
+										
+
+										
+										if (e instanceof Actor) {
+											
+											Actor a = (Actor)e;
+											
+											geom.setLocalTranslation(geom.getLocalTranslation().interpolateLocal(new Vector3f(x - env.getWorldWidth()/2, geom.getUserData("z"), y - env.getWorldHeight()/2), 5f*tpf));
+											float newAngle = 0;
+											if (a.getDirection() == 0) {
+												newAngle = FastMath.HALF_PI;
+											} else if (a.getDirection() == 1) {
+												newAngle = 0;
+											} else if (a.getDirection() == 2) {
+												newAngle = FastMath.HALF_PI*3;
+											} else if (a.getDirection() == 3) {
+												newAngle = FastMath.PI;
+											}
+											geom.getLocalRotation().slerp(new Quaternion().fromAngleAxis(newAngle, new Vector3f(0, 1, 0)), 5f*tpf);
 										}
 									}
 								}
@@ -362,7 +437,7 @@ public class Main extends SimpleApplication {
 			
 			for (Entity entity : toRemove) {
 				try {
-					entityMap.get(entity).getParent().detachChild(entityMap.get(entity));
+						entityMap.get(entity).getParent().detachChild(entityMap.get(entity));
 				} catch (NullPointerException except) {
 				}
 				
@@ -373,24 +448,37 @@ public class Main extends SimpleApplication {
 		
 	}
 	
+	public void fixMaterials( Spatial s ) {
+	    s.depthFirstTraversal(new SceneGraphVisitorAdapter() {
+	            public void visit(Geometry geom) {
+	                geom.getMaterial().setColor("Ambient", geom.getMaterial().getParamValue("Diffuse"));
+	            }
+	        });
+	}
 	
-	public Geometry getEntityGeometry(Entity e) {
+	
+	public Spatial getEntityGeometry(Entity e) {
 		
-		Geometry geom = null;
+		Spatial geom = null;
         
 		
 		if (e instanceof Actor) {
-			Box b = new Box(0.4f,0.4f,0.4f);
-			geom = new Geometry("Box", b);
-			geom.setUserData("z", 0.4f);
+			geom = assetManager.loadModel("Models/Octopus.obj");
+			geom.setLocalScale(0.3f);
+//			geom.rotate(0,FastMath.HALF_PI-0.1f,0);
+//			geom = new Geometry("Box", b);
+			geom.setUserData("z", 0f);
+//			geom..setColor("Ambient",ColorRGBA.White);
+			fixMaterials(geom);
 		} else {
 			Box b = new Box(0.2f,0.2f,0.2f);
+//			geom = assetManager.loadModel("Models/Teapot/Teapot.obj");
 			geom = new Geometry("Box", b);
 			geom.setUserData("z", 0.2f);
 		}
 		
 		if (e instanceof Actor) {
-			geom.setMaterial(baseActorMat);
+//			geom.setMaterial(baseActorMat);
 		} else if (e instanceof Wheat) {
 			geom.setMaterial(baseWheatMat);
 		} else if (e instanceof Egg) {
@@ -414,7 +502,7 @@ public class Main extends SimpleApplication {
 	
 	@Override
 	public void destroy() {
-		env.finished = true;
+		env.finish();
 		super.destroy();
 	}
 	
@@ -426,8 +514,16 @@ public class Main extends SimpleApplication {
 	        	if (name.equals("Toggle Renderer")) {
 	                paused = !paused;
 	            } else if (name.equals("Toggle Sim")) {
-	            	env.ready = !env.ready;
-	            }
+	            	if (stepping) {
+//	            		stepping = !stepping;
+	            		env.ready = true;
+	            	} else {
+	            		env.ready = !env.ready;
+	            	}
+	            } else if (name.equals("Toggle Stepping")) {
+	            	env.stepping = !env.stepping;
+	            	stepping = !stepping;
+	            } 
         	}
         }
     };
