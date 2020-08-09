@@ -1,23 +1,30 @@
-﻿# Social Evolution Simulator 2
+# Social Evolution Simulator 2
 The goal of the Social Evolution Simulator is to evolve a neural controller which exhibits social behaviour, through the simultaneous evolution of many NEAT networks in a grid environment. Each of these networks can see a set of entities near them of them by the use of a number of ray casts, and among the input information is a scalar that is the output from another neural-network-controlled entity. The environment also contains other entities (known as Resource entities, as opposed to the Actor entities which are controlled by neural networks). They exhibit simple behaviour based on their subclass of Resource entities (Edible, Tool, etc). The variables that control how the different entities behave will be optimised using a meta-optimiser, which will be optimising for the social performance of the actor entities.
 
 ## Getting Started
 If you want to get the project running immediately or wish to tinker around with the code, this is the place to start!
 ### Prerequisites
 This project has only ever been run on Ubuntu, but there is no reason that it should not work on any other other OS.
-To get started, you will need JDK >11 (earlier versions may work):
+To get started, you will need JDK 8 (earlier versions may work):
 
     $ apt-get update && apt-get upgrade
-    $ apt-get install default-jdk
+    $ apt-get install openjdk-8-jre
 
 ### Installing
 Download a clone of this repository and open up a terminal in that repository.
 After that, change directory into Worker/:
 
     $ cd Worker/
-Then simply run the SocialEvoSimWorker.jar to test:
+Then simply run the SocialEvoSimWorker3D.jar to test using your java 8 path:
 
-    $ java -jar SocialEvoSimWorker.jar
+    $ /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java -jar SocialEvoSim3D.jar
+When using the simulator, WASD is to move, 'p' toggles running the simulator, 'l' toggles updating the render, and 'esc' closes the simulator.
+
+After running the simulator, the data.csv file will have some data that can be plotted. In order to do this easily, we use R. To run, first install the R interpreter and then run the script:
+
+    $ R -f PlotData.r
+Then you will see three plot images: InterActor.png, IntraActor.png and PopulationCounts.png. Mess around with the config.properties file and rerun the simulation to see how the affects play out!
+
 And that's it! You should have it up and running. Mess around with it for a while and change some values in the config.properties file using your favourite word editor to see what type of simulations you can get running. Let me know of any interesting combinations you find.
 ### Developing
 As of now, the only IDE that has been tested and known to work with this project is Eclipse, but others may work also. In order to get started with the development environment, simply open up the Worker/ folder in Eclipse. The entry point is the src/main/java/worker/Gui.java class for the graphical interface and the src/main/java/worker/Worker.java class for a command line variant (used currently for Baysian Optimisation of the simulator's metavariables).
