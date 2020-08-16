@@ -1,4 +1,6 @@
 # Social Evolution Simulator 2
+![Image of Simulator](https://github.com/PlatinumNinja72/social-evolution-simulator-2/tree/master/Worker/SimulatorPhoto.png)
+
 The goal of the Social Evolution Simulator is to evolve a neural controller which exhibits social behaviour, through the simultaneous evolution of many NEAT networks in a grid environment. Each of these networks can see a set of entities near them of them by the use of a number of ray casts, and among the input information is a scalar that is the output from another neural-network-controlled entity. The environment also contains other entities (known as Resource entities, as opposed to the Actor entities which are controlled by neural networks). They exhibit simple behaviour based on their subclass of Resource entities (Edible, Tool, etc). The variables that control how the different entities behave will be optimised using a meta-optimiser, which will be optimising for the social performance of the actor entities.
 
 ## Getting Started
