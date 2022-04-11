@@ -537,47 +537,47 @@ public class Actor extends Entity {
 			
 			
 			// Mutate and crossover the view radius and step size.
-			float sizeStepPrime = sizeStepSize;
-			if (r.nextFloat() > 0.5) {
-				sizeStepPrime = matingPartner.sizeStepSize;
-			}
-			sizeStepPrime *= Math.exp(0.001*r.nextGaussian() + 0.001*r.nextGaussian());
-			if (sizeStepPrime < 0.01) sizeStepPrime = 0.01f;
+//			float sizeStepPrime = sizeStepSize;
+//			if (r.nextFloat() > 0.5) {
+//				sizeStepPrime = matingPartner.sizeStepSize;
+//			}
+//			sizeStepPrime *= Math.exp(0.001*r.nextGaussian() + 0.001*r.nextGaussian());
+//			if (sizeStepPrime < 0.01) sizeStepPrime = 0.01f;
 			
-			float sizePrime = size;
-			if (r.nextFloat() > 0.5) {
-				sizePrime = matingPartner.size;
-			}
+//			float sizePrime = size;
+//			if (r.nextFloat() > 0.5) {
+//				sizePrime = matingPartner.size;
+//			}
 			
-			sizePrime += sizeStepPrime*r.nextGaussian();
-			if(sizePrime < 1) {
-				sizePrime = 1;
-			}
+//			sizePrime += sizeStepPrime*r.nextGaussian();
+//			if(sizePrime < 1) {
+//				sizePrime = 1;
+//			}
 			
-			newActor.size = sizePrime;
-			newActor.sizeStepSize = sizeStepPrime;
+			newActor.size = 1;
+			newActor.sizeStepSize = 0;
 			
 			
 			// Mutate and crossover the view radius and step size.
-			float speedStepPrime = speedStepSize;
-			if (r.nextFloat() > 0.5) {
-				speedStepPrime = matingPartner.speedStepSize;
-			}
-			speedStepPrime *= Math.exp(0.001*r.nextGaussian() + 0.001*r.nextGaussian());
-			if (speedStepPrime < 0.01) speedStepPrime = 0.01f;
+//			float speedStepPrime = speedStepSize;
+//			if (r.nextFloat() > 0.5) {
+//				speedStepPrime = matingPartner.speedStepSize;
+//			}
+//			speedStepPrime *= Math.exp(0.001*r.nextGaussian() + 0.001*r.nextGaussian());
+//			if (speedStepPrime < 0.01) speedStepPrime = 0.01f;
+//			
+//			float speedPrime = speed;
+//			if (r.nextFloat() > 0.5) {
+//				speedPrime = matingPartner.speed;
+//			}
+//			
+//			speedPrime += speedStepPrime*r.nextGaussian();
+//			if(speedPrime < 1) {
+//				speedPrime = 1;
+//			}
 			
-			float speedPrime = speed;
-			if (r.nextFloat() > 0.5) {
-				speedPrime = matingPartner.speed;
-			}
-			
-			speedPrime += speedStepPrime*r.nextGaussian();
-			if(speedPrime < 1) {
-				speedPrime = 1;
-			}
-			
-			newActor.speed = speedPrime;
-			newActor.speedStepSize = speedStepPrime;
+			newActor.speed = 1;
+			newActor.speedStepSize = 0;
 			
 			// Mutate and crossover the view radius and step size.
 			float gcStepPrime = gestationCostStepSize;

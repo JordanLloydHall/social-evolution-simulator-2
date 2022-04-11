@@ -104,24 +104,8 @@ public class Main extends SimpleApplication {
 		try {
 			props = PropertyFileReader.getProperties();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-//		String userHome = System.getProperty("user.home");
-//	    assetManager.registerLocator(userHome, FileLocator.class);
-//	    
-//	    baseActorModel = assetManager.loadModel("Models/OrangeBOT.obj");
-//		
-//		File file = new File(userHome+"/Models/"+"OrangeBOT.j3o");
-//		
-//		BinaryExporter exp = BinaryExporter.getInstance();
-//		
-//		
-//		try {
-//	        exp.save(baseActorModel, file);
-//	    } catch (IOException ex) {
-//	        System.out.println(file.getAbsolutePath());
-//	    }
 		
 		chunkSize = Integer.parseInt(props.getProperty("CHUNK_SIZE"));
 		renderDistance = Integer.parseInt(props.getProperty("RENDER_DISTANCE"));
@@ -182,29 +166,35 @@ public class Main extends SimpleApplication {
         int h = env.getWorldHeight();
         
         Node floorChunkNode = new Node();
-        int numProcessed = 0;
         
-        for (int x=0; x<w; x++) {
-        	for (int y=0; y<h; y++) {
-        		e = env.getEntity(x, y);
-        		if (!(e instanceof Water)) {
-	        		geo = geo.clone();
-	        		geo.setLocalTranslation(x - w/2, -0.5f, y - h/2);
-	        		floorChunkNode.attachChild(geo);
+//        int chunkSize = 100;
+        for (int x=0; x<w; x+=chunkSize) {
+        	for (int y=0; y<h; y+=chunkSize) {
+        		for (int xx=0; xx<chunkSize; xx++) {
+                	for (int yy=0; yy<chunkSize; yy++) { 
+		        		e = env.getEntity(x+xx, y+yy);
+		        		if (!(e instanceof Water)) {
+			        		geo = geo.clone();
+			        		geo.setLocalTranslation(x + xx - w/2, -0.5f, y + yy - h/2);
+			        		floorChunkNode.attachChild(geo);
+		        		}
+                	}
         		}
-        		numProcessed += 1;
-        		if (numProcessed % (chunkSize*chunkSize) == 0) {
-        			GeometryBatchFactory.optimize(floorChunkNode);
-        			floorNode.attachChild(floorChunkNode);
-        			floorChunkNode = new Node();
-        		}
+        		GeometryBatchFactory.optimize(floorChunkNode);
+    		 	floorNode.attachChild(floorChunkNode);
+    		 	floorChunkNode = new Node();
+        		// if (numProcessed % (chunkSize*chunkSize) == 0) {
+        		// 	GeometryBatchFactory.optimize(floorChunkNode);
+        		// 	floorNode.attachChild(floorChunkNode);
+        		// 	floorChunkNode = new Node();
+        		// }
             }
         }
         
         GeometryBatchFactory.optimize(floorChunkNode);
 		floorNode.attachChild(floorChunkNode);
         
-//        GeometryBatchFactory.optimize(floorNode);
+        GeometryBatchFactory.optimize(floorNode);
         rootNode.attachChild(floorNode);
         
         entityMap = new HashMap<>();
